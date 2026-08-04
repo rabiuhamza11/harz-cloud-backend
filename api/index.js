@@ -1817,7 +1817,7 @@ const PROJECTS = [
 app.get('/health', (req, res) => {
   res.json({
     status: 'operational',
-    version: '3.0.0',
+    version: '3.6.0',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     counts: {
@@ -1833,7 +1833,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     name: 'HARZ Cloud Backend',
-    version: '3.0.0',
+    version: '3.6.0',
     owner: 'Harz Technology Group',
     status: 'operational',
     endpoints: [
