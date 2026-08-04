@@ -2037,7 +2037,7 @@ app.get('/api/analytics/events', (req, res) => {
 app.post('/api/sync/github', async (req, res) => {
   try {
     const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-    if (!GITHUB_TOKEN) return res.status(500).json({ error: 'GITHUB_TOKEN not set' });
+    if (!GITHUB_TOKEN) return res.status(503).json({ error: 'GITHUB_TOKEN not configured. Set GITHUB_TOKEN env var to enable GitHub sync.' });
     const resp = await fetch('https://api.github.com/users/rabiuhamza11/repos?per_page=100&sort=updated', {
       headers: { Authorization: 'token ' + GITHUB_TOKEN }
     });
@@ -2151,12 +2151,12 @@ app.get('/api/channels/conversations', (req, res) => {
   if (req.query.channel) filters.channel = req.query.channel;
   if (req.query.agent) filters.agent = req.query.agent;
   if (req.query.from) filters.from = req.query.from;
-  res.json(conversationStore.getConversations(filters));
+  try { res.json(conversationStore.getConversations(filters)); } catch(e) { res.json({ conversations: [], error: e.message }); }
 });
 
 // Get conversation stats
 app.get('/api/channels/conversations/stats', (req, res) => {
-  res.json(conversationStore.getConversationStats());
+  try { res.json(conversationStore.getConversationStats()); } catch(e) { res.json({ total: 0, byChannel: {}, byAgent: {} }); }
 });
 
 // Test agent routing
@@ -2324,7 +2324,7 @@ app.post('/api/auth/password-reset/request', async (req, res) => {
 app.post('/api/auth/password-reset/verify', async (req, res) => {
   if (!verifyReset) return res.status(503).json({ error: 'Password reset not configured' });
   try {
-    const result = await verifyReset(req.body.token, req.body.newPassword);
+    const token = req.body.token; const newPassword = req.body.newPassword; if (!token || !newPassword) return res.status(400).json({ error: "token and newPassword required (token format: email:code)" }); const result = await verifyReset(token, newPassword);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
