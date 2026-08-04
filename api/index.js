@@ -2311,7 +2311,7 @@ app.post('/api/2fa/backup-codes', authRequired, (req, res) => {
 
 // ===== PASSWORD RESET =====
 let requestReset, verifyReset;
-try { ({ requestReset, verifyReset } = require('../password-reset')); } catch(e) { console.log('password-reset module skipped:', e.message); }
+try { ({ requestReset, verifyReset } = require('../password-reset-standalone')); } catch(e) { console.log('password-reset module skipped:', e.message); }
 
 app.post('/api/auth/password-reset/request', async (req, res) => {
   if (!requestReset) return res.status(503).json({ error: 'Password reset not configured' });
@@ -2324,7 +2324,7 @@ app.post('/api/auth/password-reset/request', async (req, res) => {
 app.post('/api/auth/password-reset/verify', async (req, res) => {
   if (!verifyReset) return res.status(503).json({ error: 'Password reset not configured' });
   try {
-    const result = verifyReset(req.body.token, req.body.newPassword);
+    const result = await verifyReset(req.body.token, req.body.newPassword);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
