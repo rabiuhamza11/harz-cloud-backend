@@ -4,6 +4,15 @@
 
 const express = require('express');
 const cors = require('cors');
+
+// ===== Channel System Imports =====
+const router = require('./channels/router');
+const whatsappChannel = require('./channels/whatsapp');
+const slackChannel = require('./channels/slack');
+const imessageChannel = require('./channels/imessage');
+const conversationStore = require('./channels/conversations');
+const channelConfig = require('./channels/config');
+
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
@@ -1852,7 +1861,16 @@ app.get('/', (req, res) => {
       'GET  /api/projects/:id/platforms',
       'GET  /api/projects/:id/repositories',
       'GET  /api/projects/:id/agents',
-      'GET  /api/projects/:id/stats'
+      'GET  /api/projects/:id/stats',
+      'GET  /api/channels',
+      'GET  /api/channels/setup',
+      'GET  /api/channels/conversations',
+      'GET  /api/channels/conversations/stats',
+      'POST /api/channels/route-test',
+      'POST /api/channels/send',
+      'POST /webhooks/whatsapp',
+      'POST /webhooks/slack',
+      'POST /webhooks/imessage'
     ]
   });
 });
@@ -2086,6 +2104,104 @@ app.get('/api/projects/:id/stats', (req, res) => {
     wallet: p.wallet,
     revenue: p.stats.totalRevenue
   });
+});
+
+
+
+// ===== CHANNEL WEBHOOKS =====
+
+// WhatsApp webhook
+app.get('/webhooks/whatsapp', (req, res) => {
+  // Verification
+  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === process.env.WHATSAPP_VERIFY_TOKEN) {
+    return res.status(200).send(req.query['hub.challenge']);
+  }
+  res.status(403).send('Forbidden');
+});
+
+app.post('/webhooks/whatsapp', (req, res) => {
+  whatsappChannel.handleWhatsAppWebhook(req, res, router, conversationStore);
+});
+
+// Slack webhook
+app.post('/webhooks/slack', (req, res) => {
+  slackChannel.handleSlackWebhook(req, res, router, conversationStore);
+});
+
+// iMessage webhook
+app.post('/webhooks/imessage', (req, res) => {
+  imessageChannel.handleiMessageWebhook(req, res, router, conversationStore);
+});
+
+// ===== CHANNEL MANAGEMENT =====
+
+// Get channel status
+app.get('/api/channels', (req, res) => {
+  res.json(channelConfig.getChannelStatus());
+});
+
+// Get channel setup guide
+app.get('/api/channels/setup', (req, res) => {
+  res.json(channelConfig.getChannelSetupGuide());
+});
+
+// Get conversations
+app.get('/api/channels/conversations', (req, res) => {
+  const filters = {};
+  if (req.query.channel) filters.channel = req.query.channel;
+  if (req.query.agent) filters.agent = req.query.agent;
+  if (req.query.from) filters.from = req.query.from;
+  res.json(conversationStore.getConversations(filters));
+});
+
+// Get conversation stats
+app.get('/api/channels/conversations/stats', (req, res) => {
+  res.json(conversationStore.getConversationStats());
+});
+
+// Test agent routing
+app.post('/api/channels/route-test', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'Text is required' });
+  const routing = router.routeMessage(text);
+  res.json({
+    text,
+    agent: routing.agent.name,
+    role: routing.agent.role,
+    confidence: routing.confidence,
+    language: routing.language,
+    allScores: routing.allScores
+  });
+});
+
+// Send message via channel (requires auth)
+app.post('/api/channels/send', authRequired, async (req, res) => {
+  const { channel, to, text } = req.body;
+  if (!channel || !to || !text) return res.status(400).json({ error: 'channel, to, and text are required' });
+  
+  let result;
+  if (channel === 'whatsapp') {
+    result = await whatsappChannel.sendWhatsAppMessage(
+      process.env.WHATSAPP_PHONE_NUMBER_ID,
+      process.env.WHATSAPP_TOKEN,
+      to, text
+    );
+  } else if (channel === 'slack') {
+    result = await slackChannel.sendSlackMessage(
+      process.env.SLACK_BOT_TOKEN,
+      to, text
+    );
+  } else if (channel === 'imessage') {
+    result = await imessageChannel.sendiMessageMessage(
+      process.env.IMESSAGE_RELAY_URL,
+      process.env.IMESSAGE_RELAY_TOKEN,
+      to, text
+    );
+  } else {
+    return res.status(400).json({ error: 'Unknown channel: ' + channel });
+  }
+  
+  res.json({ success: true, channel, result });
 });
 
 
