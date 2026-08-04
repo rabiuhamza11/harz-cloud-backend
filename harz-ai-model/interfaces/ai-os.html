@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HARZ AI — Intelligent Business Ecosystem</title>
+<meta name="description" content="HARZ AI — 63+ platforms, 300+ digital products, AI agents, payments, real estate, and more. Powered by HARZ Cloud v5.1.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--card:#111827;--border:#1f2937;--gold:#d4af37;--green:#0a4d2e;--text:#fff;--muted:#888;--accent:#7b2ff7}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+.hidden{display:none}
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(10,14,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{font-size:1.3rem;font-weight:bold;color:var(--gold)}
+.nav-logo span{color:var(--text)}
+.nav-links{display:flex;gap:20px;font-size:.85rem}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--gold)}
+.nav-cta{padding:8px 18px;background:var(--green);color:var(--gold);border-radius:20px;font-size:.85rem;font-weight:600}
+.nav-cta:hover{text-decoration:none;opacity:.9}
+.menu-btn{display:none;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer}
+@media(max-width:768px){.nav-links{display:none}.menu-btn{display:block}}
+/* HERO */
+.hero{text-align:center;padding:60px 20px 40px;background:radial-gradient(ellipse at center,rgba(10,77,46,.15),transparent)}
+.hero h1{font-size:2.5rem;margin-bottom:10px}
+.hero h1 span{color:var(--gold)}
+.hero p{color:var(--muted);font-size:1.1rem;max-width:600px;margin:0 auto 20px}
+.hero-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:30px}
+.badge{padding:6px 16px;background:var(--card);border:1px solid var(--border);border-radius:20px;font-size:.8rem;color:var(--muted)}
+.badge.live{border-color:var(--green);color:var(--green)}
+.badge.gold{border-color:var(--gold);color:var(--gold)}
+.hero-cta{display:flex;gap:15px;justify-content:center;flex-wrap:wrap}
+.btn{padding:14px 30px;border-radius:30px;font-weight:600;font-size:.95rem;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--green),#064e3b);color:var(--gold)}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn:hover{transform:translateY(-2px);transition:.2s}
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:900px;margin:30px auto;padding:0 20px}
+.stat{text-align:center;padding:18px;background:var(--card);border:1px solid var(--border);border-radius:12px}
+.stat-num{font-size:1.6rem;font-weight:bold;color:var(--gold)}
+.stat-label{color:var(--muted);font-size:.75rem;margin-top:3px}
+/* SECTIONS */
+.section{max-width:1000px;margin:0 auto;padding:40px 20px}
+.section-title{font-size:1.5rem;margin-bottom:20px;text-align:center}
+.section-title span{color:var(--gold)}
+.section-sub{text-align:center;color:var(--muted);font-size:.9rem;margin-bottom:25px}
+/* PLATFORMS */
+.platforms{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.platform{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center;transition:.2s;cursor:pointer}
+.platform:hover{border-color:var(--gold);transform:translateY(-3px)}
+.platform .icon{font-size:1.8rem;margin-bottom:8px}
+.platform .name{font-weight:600;font-size:.9rem}
+.platform .desc{color:var(--muted);font-size:.75rem;margin-top:3px}
+.platform .status{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;font-size:.65rem}
+.platform .status.live{background:#0a4d2e22;color:#10b981}
+/* PRODUCTS */
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px}
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.product-card .pc-head{padding:16px}
+.product-card .pc-cat{font-size:.7rem;color:var(--gold);text-transform:uppercase}
+.product-card .pc-title{font-size:1rem;font-weight:600;margin:4px 0}
+.product-card .pc-price{font-size:1.2rem;font-weight:bold;color:var(--gold)}
+.product-card .pc-body{padding:0 16px;color:var(--muted);font-size:.85rem}
+.product-card .pc-foot{padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap}
+.store-btn{padding:8px 14px;border-radius:8px;font-size:.8rem;font-weight:600;flex:1;text-align:center}
+.store-btn Gumroad{background:#ff90e8;color:#000}
+.store-btn.Getly{background:#3b82f6;color:#fff}
+.store-btn.HarzDM{background:var(--green);color:var(--gold)}
+.store-btn.HarzStore{background:#1a1a2e;color:#fff}
+/* PAYMENTS */
+.payments{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:20px}
+.pay-method{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px;text-align:center}
+.pay-method .pm-name{font-weight:600;font-size:.85rem}
+.pay-method .pm-status{font-size:.7rem;margin-top:3px}
+.pay-method .pm-status.active{color:#10b981}
+.pay-method .pm-status.pending{color:#f59e0b}
+/* AGENTS */
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.agent-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center}
+.agent-card .ag-avatar{width:50px;height:50px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:var(--green)}
+.agent-card .ag-name{font-weight:600}
+.agent-card .ag-role{color:var(--muted);font-size:.8rem}
+.agent-card .ag-channel{font-size:.7rem;margin-top:5px;color:var(--gold)}
+/* HEALTH */
+.health-bar{max-width:600px;margin:20px auto}
+.health-item{display:flex;justify-content:space-between;align-items:center;padding:10px 15px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.health-item .hi-name{font-size:.85rem}
+.health-item .hi-status{font-size:.75rem;padding:3px 10px;border-radius:10px}
+.health-item .hi-status.online{background:#0a4d2e22;color:#10b981}
+.health-item .hi-status.offline{background:#ef444422;color:#ef4444}
+/* CONTACT */
+.contact{text-align:center;padding:40px 20px;background:var(--card);border-top:1px solid var(--border);margin-top:30px}
+.contact h2{color:var(--gold);margin-bottom:10px}
+.contact p{color:var(--muted);margin:5px 0}
+.contact .wa-btn{display:inline-block;margin-top:15px;padding:12px 30px;background:#25D366;color:#fff;border-radius:30px;font-weight:600}
+.contact .wa-btn:hover{text-decoration:none;opacity:.9}
+/* FOOTER */
+footer{text-align:center;padding:30px 20px;color:#444;font-size:.8rem}
+footer a{color:#555}
+/* MENU MODAL */
+.menu-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);z-index:200;display:none}
+.menu-modal.show{display:flex;justify-content:center;align-items:center}
+.menu-modal-content{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:30px;width:90%;max-width:400px;text-align:center}
+.menu-modal-content h3{color:var(--gold);margin-bottom:15px}
+.menu-modal-content a{display:block;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:8px 0;color:var(--text)}
+.menu-modal-content a:hover{text-decoration:none;border-color:var(--gold)}
+.menu-close{float:right;cursor:pointer;color:var(--muted);font-size:1.5rem}
+@media(max-width:600px){.hero h1{font-size:1.8rem}.stats{grid-template-columns:repeat(2,1fr)}.section-title{font-size:1.2rem}.platforms{grid-template-columns:repeat(2,1fr)}.products-grid{grid-template-columns:1fr}.agents{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+<div class="nav-logo">HARZ<span>AI</span></div>
+<div class="nav-links">
+<a href="#platforms">Platforms</a>
+<a href="#store">Store</a>
+<a href="#agents">AI Agents</a>
+<a href="#payments">Payments</a>
+<a href="#health">Health</a>
+</div>
+<a href="https://wa.me/2348028687857?text=Hello%20HARZ%20AI" class="nav-cta">WhatsApp</a>
+<button class="menu-btn" onclick="document.getElementById('menuModal').classList.add('show')">☰</button>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+<h1>HARZ <span>AI</span></h1>
+<p>Intelligent Business Ecosystem — 63+ platforms, AI agents, digital products, payments, real estate, and autonomous infrastructure.</p>
+<div class="hero-badges">
+<span class="badge live">● Systems Online</span>
+<span class="badge gold">HARZ Cloud v5.1</span>
+<span class="badge">DeployForge v10</span>
+<span class="badge">RBAC + RLS Security</span>
+</div>
+<div class="hero-cta">
+<a href="https://wa.me/2348028687857?text=I%20want%20to%20start" class="btn btn-primary">Get Started</a>
+<a href="#store" class="btn btn-secondary">Browse Products</a>
+</div>
+</div>
+
+<!-- STATS -->
+<div class="stats" id="liveStats">
+<div class="stat"><div class="stat-num" id="statPlatforms">10+</div><div class="stat-label">Platforms</div></div>
+<div class="stat"><div class="stat-num" id="statProducts">300+</div><div class="stat-label">Products</div></div>
+<div class="stat"><div class="stat-num" id="statAgents">7</div><div class="stat-label">AI Agents</div></div>
+<div class="stat"><div class="stat-num" id="statRoutes">163</div><div class="stat-label">API Routes</div></div>
+</div>
+
+<!-- PLATFORMS -->
+<div class="section" id="platforms">
+<h2 class="section-title">Ecosystem <span>Platforms</span></h2>
+<p class="section-sub">10 platforms powered by HARZ Cloud — all connected, all autonomous</p>
+<div class="platforms" id="platformGrid"></div>
+</div>
+
+<!-- STORE -->
+<div class="section" id="store">
+<h2 class="section-title">HARZ <span>Store</span></h2>
+<p class="section-sub">300+ digital products across 45 categories. Pay with card, transfer, or crypto.</p>
+<div class="products-grid" id="storeGrid"></div>
+</div>
+
+<!-- AI AGENTS -->
+<div class="section" id="agents">
+<h2 class="section-title">AI <span>Agents</span></h2>
+<p class="section-sub">7 autonomous agents working 24/7 — support, marketing, finance, security, and more</p>
+<div class="agents" id="agentsGrid"></div>
+</div>
+
+<!-- PAYMENTS -->
+<div class="section" id="payments">
+<h2 class="section-title">Payment <span>Methods</span></h2>
+<p class="section-sub">Multiple payment options for global and Nigerian customers</p>
+<div class="payments" id="payGrid"></div>
+</div>
+
+<!-- HEALTH -->
+<div class="section" id="health">
+<h2 class="section-title">System <span>Health</span></h2>
+<p class="section-sub">Live infrastructure status — powered by HARZ Cloud + DeployForge</p>
+<div class="health-bar" id="healthBar"></div>
+</div>
+
+<!-- CONTACT -->
+<div class="contact">
+<h2>Ready to Build Something Great?</h2>
+<p>WhatsApp: 08028687857 | 07036170795</p>
+<p>Email: hamzarabiu390@gmail.com</p>
+<p>HARZ Digital Services | CAC RC 321424</p>
+<a href="https://wa.me/2348028687857?text=I'm%20interested%20in%20HARZ%20AI" class="wa-btn">Chat on WhatsApp</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+HARZ AI &copy; 2026 | HARZ Digital Services (RC 321424) | <a href="https://harz-cloud-backend.onrender.com/health">API Status</a> | <a href="https://github.com/rabiuhamza11/harz-ai-os">GitHub</a>
+</footer>
+
+<!-- MENU MODAL -->
+<div class="menu-modal" id="menuModal" onclick="if(event.target===this)classList.remove('show')">
+<div class="menu-modal-content">
+<span class="menu-close" onclick="document.getElementById('menuModal').classList.remove('show')">&times;</span>
+<h3>Navigation</h3>
+<a href="#platforms" onclick="document.getElementById('menuModal').classList.remove('show')">Platforms</a>
+<a href="#store" onclick="document.getElementById('menuModal').classList.remove('show')">Store</a>
+<a href="#agents" onclick="document.getElementById('menuModal').classList.remove('show')">AI Agents</a>
+<a href="#payments" onclick="document.getElementById('menuModal').classList.remove('show')">Payments</a>
+<a href="#health" onclick="document.getElementById('menuModal').classList.remove('show')">System Health</a>
+<a href="https://wa.me/2348028687857">WhatsApp Contact</a>
+<a href="https://harz-cloud-backend.onrender.com/health">Cloud Status</a>
+</div>
+</div>
+
+<script>
+// PLATFORMS DATA
+const platforms=[
+{name:"HarzDM",desc:"Digital Marketplace",icon:"🛒",url:"https://harzdm.vercel.app",status:"live"},
+{name:"Gumroad",desc:"Global Products",icon:"🌍",url:"https://hamzarabiu.gumroad.com",status:"live"},
+{name:"Getly Store",desc:"82 Products",icon:"📦",url:"https://www.getly.store/store/harzdm-com-mr951f69",status:"live"},
+{name:"Harz Store",desc:"GitHub Pages",icon:"🏪",url:"https://rabiuhamza11.github.io/harz-portfolio/harz-store.html",status:"live"},
+{name:"Abuja Estate",desc:"Real Estate",icon:"🏠",url:"https://rabiuhamza11.github.io/harz-portfolio/abuja-estate-city.html",status:"live"},
+{name:"EduWealth AI",desc:"Online Courses",icon:"📚",url:"https://rabiuhamza11.github.io/eduwealth-ai/",status:"live"},
+{name:"OMEGA Health",desc:"Health AI",icon:"🏥",url:"https://rabiuhamza11.github.io/omega-health-ai/",status:"live"},
+{name:"HarzMusic",desc:"Music Platform",icon:"🎵",url:"https://rabiuhamza11.github.io/harz-music/",status:"live"},
+{name:"HarzFilm",desc:"Film Platform",icon:"🎬",url:"https://rabiuhamza11.github.io/harz-film/",status:"live"},
+{name:"HARZ Cloud",desc:"Backend API",icon:"☁️",url:"https://harz-cloud-backend.onrender.com/health",status:"live"},
+{name:"BuildBot AI",desc:"Construction",icon:"🏗️",url:"https://rabiuhamza11.github.io/harzbuild-ai/",status:"live"},
+{name:"HarzFX",desc:"Forex Trading",icon:"📊",url:"https://rabiuhamza11.github.io/harzfx/",status:"live"},
+{name:"HARZ Connect",desc:"Social Platform",icon:"💬",url:"#",status:"live"},
+{name:"HARZ Edge",desc:"Security & CDN",icon:"🛡️",url:"https://rabiuhamza11.github.io/harz-edge/",status:"live"},
+{name:"Apex Bank",desc:"Digital Banking",icon:"🏦",url:"https://rabiuhamza11.github.io/Apex-ai/",status:"live"},
+{name:"MindCare AI",desc:"Mental Wellness",icon:"🧠",url:"https://rabiuhamza11.github.io/mindcare-ai/",status:"live"},
+{name:"HarzPay",desc:"Payment Gateway",icon:"💳",url:"https://rabiuhamza11.github.io/harzpay/",status:"live"},
+{name:"HarzAjo",desc:"Group Savings",icon:"🤝",url:"https://rabiuhamza11.github.io/harzajo/",status:"live"},
+{name:"HarzLend",desc:"Micro Loans",icon:"💰",url:"https://rabiuhamza11.github.io/harlend/",status:"live"},
+{name:"Harz Domains",desc:"Domain Registration",icon:"🌐",url:"https://rabiuhamza11.github.io/hostmaster-ai/",status:"live"}
+];
+
+// PRODUCTS DATA
+const products=[
+{cat:"Learning Series",title:"Data Analysis & Excel Analytics",price:"$1.99",stores:[{n:"Gumroad",u:"https://hamzarabiu.gumroad.com/l/data-analysis",c:"Gumroad"}]},
+{cat:"Learning Series",title:"Python Programming",price:"$1.99",stores:[{n:"Gumroad",u:"https://hamzarabiu.gumroad.com/l/python-programming",c:"Gumroad"}]},
+{cat:"Learning Series",title:"Digital Marketing Strategy",price:"$1.99",stores:[{n:"Gumroad",u:"https://hamzarabiu.gumroad.com/l/digital-marketing",c:"Gumroad"}]},
+{cat:"Learning Series",title:"Cybersecurity Essentials",price:"$1.99",stores:[{n:"Gumroad",u:"https://hamzarabiu.gumroad.com/l/cybersecurity",c:"Gumroad"}]},
+{cat:"AI Tools",title:"AI Tools Bundle (300+)",price:"₦5,000",stores:[{n:"Getly",u:"https://www.getly.store/store/harzdm-com-mr951f69",c:"Getly"},{n:"HarzDM",u:"https://harzdm.vercel.app",c:"HarzDM"}]},
+{cat:"Marketing",title:"Social Media Marketing Kit",price:"₦3,500",stores:[{n:"Getly",u:"https://www.getly.store/store/harzdm-com-mr951f69",c:"Getly"}]},
+{cat:"Business",title:"Business Plan Templates",price:"₦3,000",stores:[{n:"Getly",u:"https://www.getly.store/store/harzdm-com-mr951f69",c:"Getly"},{n:"HarzStore",u:"https://rabiuhamza11.github.io/harz-portfolio/harz-store.html",c:"HarzStore"}]},
+{cat:"Real Estate",title:"Abuja Property Listings",price:"₦1.8M+",stores:[{n:"View",u:"https://rabiuhamza11.github.io/harz-portfolio/abuja-estate-city.html",c:"HarzDM"}]}
+];
+
+// AGENTS DATA
+const agents=[
+{name:"Magani",role:"Orchestrator",icon:"🧙",channel:"WhatsApp + Telegram"},
+{name:"Aisha",role:"Customer Support",icon:"👩",channel:"WhatsApp"},
+{name:"Hauwa",role:"Marketing & Content",icon:"✍️",channel:"Telegram"},
+{name:"Rabi",role:"Finance & Orders",icon:"📊",channel:"Telegram"},
+{name:"Nuruddeen",role:"Platform Health",icon:"🔧",channel:"Telegram"},
+{name:"Omega",role:"Security & Ops",icon:"🛡️",channel:"Base44"},
+{name:"Danjuma",role:"Education",icon:"📚",channel:"Telegram"}
+];
+
+// PAYMENTS DATA
+const payments=[
+{name:"UBA Transfer",status:"active",detail:"2034326424"},
+{name:"Paystack",status:"active",detail:"Card Payments"},
+{name:"Gumroad",status:"active",detail:"Global Cards"},
+{name:"GDEG Token",status:"active",detail:"Polygon"},
+{name:"USDT TRC20",status:"active",detail:"Crypto"},
+{name:"Paddle",status:"pending",detail:"Verification"},
+{name:"NOWPayments",status:"active",detail:"355+ Crypto"},
+{name:"Flutterwave",status:"pending",detail:"Setup 3/11"}
+];
+
+// HEALTH DATA (will be fetched live)
+const healthChecks=[
+{name:"HARZ Cloud (Render)",url:"https://harz-cloud-backend.onrender.com/health"},
+{name:"DeployForge v10",url:"https://harz-cloud-backend.onrender.com/deployforge/health"},
+{name:"HarzDM Marketplace",url:"https://harzdm.vercel.app"},
+{name:"Abuja Estate City",url:"https://rabiuhamza11.github.io/harz-portfolio/abuja-estate-city.html"},
+{name:"EduWealth AI",url:"https://rabiuhamza11.github.io/eduwealth-ai/"},
+{name:"HarzMusic",url:"https://rabiuhamza11.github.io/harz-music/"},
+{name:"HarzFilm",url:"https://rabiuhamza11.github.io/harz-film/"},
+{name:"HARZ Edge",url:"https://rabiuhamza11.github.io/harz-edge/"},
+{name:"BuildBot AI",url:"https://rabiuhamza11.github.io/harzbuild-ai/"},
+{name:"Apex Bank",url:"https://rabiuhamza11.github.io/Apex-ai/"}
+];
+
+// RENDER PLATFORMS
+function renderPlatforms(){
+document.getElementById("platformGrid").innerHTML=platforms.map(p=>`
+<div class="platform" onclick="window.open('${p.url}','_blank')">
+<div class="icon">${p.icon}</div>
+<div class="name">${p.name}</div>
+<div class="desc">${p.desc}</div>
+<span class="status ${p.status}">● ${p.status.toUpperCase()}</span>
+</div>`).join("");
+}
+
+// RENDER PRODUCTS
+function renderProducts(){
+document.getElementById("storeGrid").innerHTML=products.map(p=>`
+<div class="product-card">
+<div class="pc-head">
+<div class="pc-cat">${p.cat}</div>
+<div class="pc-title">${p.title}</div>
+<div class="pc-price">${p.price}</div>
+</div>
+<div class="pc-foot">
+${p.stores.map(s=>`<a href="${s.u}" target="_blank" class="store-btn ${s.c}">${s.n}</a>`).join("")}
+</div>
+</div>`).join("");
+}
+
+// RENDER AGENTS
+function renderAgents(){
+document.getElementById("agentsGrid").innerHTML=agents.map(a=>`
+<div class="agent-card">
+<div class="ag-avatar">${a.icon}</div>
+<div class="ag-name">${a.name}</div>
+<div class="ag-role">${a.role}</div>
+<div class="ag-channel">${a.channel}</div>
+</div>`).join("");
+}
+
+// RENDER PAYMENTS
+function renderPayments(){
+document.getElementById("payGrid").innerHTML=payments.map(p=>`
+<div class="pay-method">
+<div class="pm-name">${p.name}</div>
+<div class="pm-status ${p.status}">${p.status==="active"?"● Active":"○ Pending"}</div>
+<div style="font-size:.7rem;color:#555;margin-top:3px">${p.detail}</div>
+</div>`).join("");
+}
+
+// HEALTH CHECK
+async function checkHealth(){
+document.getElementById("healthBar").innerHTML=healthChecks.map(h=>`
+<div class="health-item">
+<span class="hi-name">${h.name}</span>
+<span class="hi-status online">● Checking...</span>
+</div>`).join("");
+
+const results=await Promise.allSettled(healthChecks.map(h=>
+fetch(h.url,{mode:"no-cors",signal:AbortSignal.timeout(8000)})
+.then(()=>true).catch(()=>false)
+));
+
+document.getElementById("healthBar").innerHTML=healthChecks.map((h,i)=>{
+const ok=results[i].status==="fulfilled"&&results[i].value===true;
+return `<div class="health-item">
+<span class="hi-name">${h.name}</span>
+<span class="hi-status ${ok?"online":"offline"}">${ok?"● Online":"● Offline"}</span>
+</div>`;
+}).join("");
+}
+
+// FETCH LIVE STATS FROM HARZ CLOUD
+async function fetchStats(){
+try{
+const r=await fetch("https://harz-cloud-backend.onrender.com/health",{signal:AbortSignal.timeout(8000)});
+const d=await r.json();
+if(d.status==="operational"){
+document.getElementById("statRoutes").textContent=d.routes||163;
+}
+}catch(e){}
+}
+
+// INIT
+renderPlatforms();
+renderProducts();
+renderAgents();
+renderPayments();
+checkHealth();
+fetchStats();
+</script>
+</body>
+</html>

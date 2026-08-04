@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HARZ AI — Free AI Assistant (Nemotron Powered)</title>
+<meta name="description" content="HARZ AI — Free AI assistant powered by NVIDIA Nemotron. Chat, write, code, translate. Like Claude but free.">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--card:#111827;--border:#1f2937;--green:#0a4d2e;--gold:#d4af37;--text:#fff;--muted:#888;--user:#1a3a5e;--ai:#1a1a2e}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:rgba(10,14,23,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;z-index:10}
+.header-left{display:flex;align-items:center;gap:10px}
+.logo{font-size:1.2rem;font-weight:bold;color:var(--gold)}
+.logo span{color:var(--text)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.model-badge{font-size:.7rem;color:var(--muted);padding:3px 10px;border:1px solid var(--border);border-radius:10px}
+.header-right{display:flex;gap:8px;align-items:center}
+.btn-icon{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:5px;border-radius:8px}
+.btn-icon:hover{background:var(--card);color:var(--gold)}
+.chat-area{flex:1;overflow-y:auto;padding:16px;scroll-behavior:smooth}
+.chat-area::-webkit-scrollbar{width:4px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.message{max-width:85%;margin-bottom:12px;padding:12px 16px;border-radius:16px;line-height:1.5;font-size:.92rem;word-wrap:break-word;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.message.user{background:var(--user);margin-left:auto;border-bottom-right-radius:4px}
+.message.ai{background:var(--ai);border:1px solid var(--border);border-bottom-left-radius:4px}
+.message.ai .msg-role{font-size:.7rem;color:var(--gold);margin-bottom:4px}
+.message.error{background:#3a1a1a;border:1px solid #ef4444}
+.message pre{background:#0d1117;border-radius:8px;padding:10px;overflow-x:auto;margin:8px 0;font-size:.8rem}
+.message code{font-family:monospace}
+.typing{display:flex;gap:4px;padding:8px 16px}
+.typing span{width:8px;height:8px;background:var(--muted);border-radius:50%;animation:typing 1.4s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+.input-area{border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0;background:rgba(10,14,23,.95)}
+.input-row{display:flex;gap:10px;align-items:flex-end}
+.input-row textarea{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--text);font-size:.92rem;resize:none;max-height:120px;font-family:inherit;outline:none;transition:border-color .2s}
+.input-row textarea:focus{border-color:var(--gold)}
+.send-btn{width:44px;height:44px;border-radius:12px;border:none;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--green),#064e3b);color:var(--gold);transition:transform .1s}
+.send-btn:hover{transform:scale(1.05)}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}
+.suggestions{display:flex;gap:8px;overflow-x:auto;padding:0 0 8px;margin-bottom:4px}
+.suggestions::-webkit-scrollbar{height:0}
+.suggestion-chip{white-space:nowrap;padding:6px 14px;background:var(--card);border:1px solid var(--border);border-radius:20px;font-size:.8rem;color:var(--muted);cursor:pointer;transition:.2s}
+.suggestion-chip:hover{border-color:var(--gold);color:var(--gold)}
+.model-select{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:.75rem;cursor:pointer;outline:none}
+.model-select option{background:var(--bg)}
+.sidebar{position:fixed;top:0;left:-300px;width:280px;height:100vh;background:var(--bg);border-right:1px solid var(--border);transition:left .3s;z-index:100;padding:16px;overflow-y:auto}
+.sidebar.show{left:0}
+.sidebar h3{color:var(--gold);margin-bottom:12px;font-size:1rem}
+.sidebar-item{padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:.85rem}
+.sidebar-item:hover{border-color:var(--gold)}
+.sidebar-item .si-title{font-weight:600}
+.sidebar-item .si-desc{color:var(--muted);font-size:.75rem;margin-top:2px}
+.sidebar-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:99;display:none}
+.sidebar-overlay.show{display:block}
+.welcome{text-align:center;padding:40px 20px}
+.welcome h2{color:var(--gold);font-size:1.5rem;margin-bottom:8px}
+.welcome p{color:var(--muted);font-size:.9rem;margin-bottom:20px}
+.welcome-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;max-width:500px;margin:0 auto 20px}
+.welcome-feature{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.welcome-feature .wf-icon{font-size:1.3rem}
+.welcome-feature .wf-title{font-size:.8rem;font-weight:600;margin-top:4px}
+.welcome-feature .wf-desc{font-size:.7rem;color:var(--muted)}
+@media(max-width:600px){.message{max-width:92%;font-size:.88rem}.welcome-features{grid-template-columns:repeat(2,1fr)}.model-badge{display:none}}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<div class="sidebar" id="sidebar">
+<h3>HARZ AI Agents</h3>
+<div class="sidebar-item" onclick="setAgent('chat')"><div class="si-title">🧙 General Chat</div><div class="si-desc">Free AI assistant — ask anything</div></div>
+<div class="sidebar-item" onclick="setAgent('marketing')"><div class="si-title">✍️ Marketing Writer</div><div class="si-desc">Ad copy, posts, captions</div></div>
+<div class="sidebar-item" onclick="setAgent('support')"><div class="si-title">👩 Customer Support</div><div class="si-desc">Reply customers, FAQ</div></div>
+<div class="sidebar-item" onclick="setAgent('code')"><div class="si-title">💻 Code Helper</div><div class="si-desc">Write & debug code</div></div>
+<div class="sidebar-item" onclick="setAgent('translate')"><div class="si-title">🌍 Translator</div><div class="si-desc">Hausa, English, Pidgin, more</div></div>
+<div class="sidebar-item" onclick="setAgent('business')"><div class="si-title">📊 Business Advisor</div><div class="si-desc">Strategy, plans, analysis</div></div>
+<div class="sidebar-item" onclick="setAgent('education')"><div class="si-title">📚 Tutor</div><div class="si-desc">Learn any subject</div></div>
+<div class="sidebar-item" onclick="clearChat()"><div class="si-title">🗑️ Clear Chat</div><div class="si-desc">Start fresh conversation</div></div>
+</div>
+
+<header>
+<div class="header-left">
+<button class="btn-icon" onclick="toggleSidebar()">☰</button>
+<div class="logo">HARZ<span>AI</span></div>
+<span class="status-dot" id="statusDot"></span>
+<span class="model-badge" id="modelBadge">Nemotron 120B</span>
+</div>
+<div class="header-right">
+<select class="model-select" id="modelSelect" onchange="changeModel()">
+<option value="smart">Nemotron 550B (Smart)</option>
+<option value="fast" selected>Nemotron 120B (Fast)</option>
+<option value="code">Code Model</option>
+<option value="creative">Nemotron 550B (Creative)</option>
+</select>
+<button class="btn-icon" onclick="clearChat()" title="Clear">🗑️</button>
+</div>
+</header>
+
+<div class="chat-area" id="chatArea">
+<div class="welcome" id="welcome">
+<h2>HARZ AI</h2>
+<p>Free AI assistant powered by NVIDIA Nemotron. Like Claude — but free.</p>
+<div class="welcome-features">
+<div class="welcome-feature"><div class="wf-icon">💬</div><div class="wf-title">Chat</div><div class="wf-desc">Ask anything</div></div>
+<div class="welcome-feature"><div class="wf-icon">✍️</div><div class="wf-title">Write</div><div class="wf-desc">Posts, ads, emails</div></div>
+<div class="welcome-feature"><div class="wf-icon">💻</div><div class="wf-title">Code</div><div class="wf-desc">Build & debug</div></div>
+<div class="welcome-feature"><div class="wf-icon">🌍</div><div class="wf-title">Translate</div><div class="wf-desc">Hausa, English</div></div>
+<div class="welcome-feature"><div class="wf-icon">📊</div><div class="wf-title">Business</div><div class="wf-desc">Plans, strategy</div></div>
+<div class="welcome-feature"><div class="wf-icon">📚</div><div class="wf-title">Learn</div><div class="wf-desc">Any subject</div></div>
+</div>
+</div>
+<div class="suggestions" id="suggestions">
+<div class="suggestion-chip" onclick="quickAsk('Tell me about HARZ Digital Services')">Tell me about HARZ</div>
+<div class="suggestion-chip" onclick="quickAsk('Write a marketing post about digital products')">Marketing post</div>
+<div class="suggestion-chip" onclick="quickAsk('Write a Python function to calculate Fibonacci')">Python code</div>
+<div class="suggestion-chip" onclick="quickAsk('Translate to Hausa: Welcome to our store')">Translate to Hausa</div>
+<div class="suggestion-chip" onclick="quickAsk('Write a business plan outline for a digital agency')">Business plan</div>
+</div>
+<div id="messages"></div>
+</div>
+
+<div class="input-area">
+<div class="input-row">
+<textarea id="input" placeholder="Message HARZ AI... (Shift+Enter for new line)" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+<button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+</div>
+</div>
+
+<script>
+const API_URL = "https://superagent-2286fb2f.base44.app/functions/harzAIChat";
+let currentModel = "fast";
+let currentAgent = "chat";
+let chatHistory = [];
+let isGenerating = false;
+
+function toggleSidebar(){document.getElementById("sidebar").classList.toggle("show");document.getElementById("sidebarOverlay").classList.toggle("show");}
+function setAgent(agent){currentAgent = agent;toggleSidebar();clearChat();const names={chat:"HARZ AI",marketing:"HAUWA (Marketing)",support:"AISHA (Support)",code:"YAYA (Code)",translate:"Translator",business:"Business Advisor",education:"DANJUMA (Tutor)"};addMessage("ai",names[agent]+" is ready! How can I help you?",names[agent]);}
+function changeModel(){currentModel = document.getElementById("modelSelect").value;const labels={smart:"Nemotron 550B",fast:"Nemotron 120B",code:"Code Model",creative:"Nemotron 550B"};document.getElementById("modelBadge").textContent = labels[currentModel];}
+function quickAsk(text){document.getElementById("input").value = text;sendMessage();}
+function clearChat(){chatHistory = [];document.getElementById("messages").innerHTML = "";document.getElementById("welcome").style.display = "block";document.getElementById("suggestions").style.display = "flex";}
+function autoResize(el){el.style.height = "auto";el.style.height = Math.min(el.scrollHeight,120) + "px";}
+function handleKey(e){if(e.key === "Enter" && !e.shiftKey){e.preventDefault();sendMessage();}}
+
+function addMessage(type, text, role){
+document.getElementById("welcome").style.display = "none";
+document.getElementById("suggestions").style.display = "none";
+const messages = document.getElementById("messages");
+const div = document.createElement("div");
+div.className = "message " + type;
+if(type === "ai" && role){const r = document.createElement("div");r.className = "msg-role";r.textContent = role;div.appendChild(r);}
+div.innerHTML += formatText(text);
+messages.appendChild(div);
+scrollToBottom();
+return div;
+}
+
+function formatText(text){
+let html = text;
+html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (m,lang,code) => "<pre><code>"+escapeHtml(code)+"</code></pre>");
+html = html.replace(/`([^`]+)`/g, '<code style="background:#1a1a2e;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:.85em">$1</code>');
+html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+html = html.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:var(--gold)">$1</a>');
+html = html.replace(/\n/g, '<br>');
+return html;
+}
+
+function escapeHtml(text){const div = document.createElement("div");div.textContent = text;return div.innerHTML;}
+function scrollToBottom(){const a = document.getElementById("chatArea");a.scrollTop = a.scrollHeight;}
+function showTyping(){const m = document.getElementById("messages");const d = document.createElement("div");d.className = "message ai";d.id = "typing";d.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';m.appendChild(d);scrollToBottom();}
+function hideTyping(){const t = document.getElementById("typing");if(t)t.remove();}
+
+async function sendMessage(){
+if(isGenerating)return;
+const input = document.getElementById("input");
+const text = input.value.trim();
+if(!text)return;
+isGenerating = true;
+document.getElementById("sendBtn").disabled = true;
+input.value = "";
+input.style.height = "auto";
+addMessage("user", text);
+chatHistory.push({role: "user", content: text});
+showTyping();
+
+try{
+const response = await fetch(API_URL, {
+method: "POST",
+headers: {"Content-Type": "application/json"},
+body: JSON.stringify({message: text, agent: currentAgent, model: currentModel, history: chatHistory.slice(-10)})
+});
+const data = await response.json();
+hideTyping();
+if(data.success){
+const agentNames = {chat:"HARZ AI",marketing:"HAUWA",support:"AISHA",code:"YAYA",translate:"Translator",business:"Advisor",education:"DANJUMA"};
+addMessage("ai", data.response, agentNames[currentAgent]);
+chatHistory.push({role: "ai", content: data.response});
+} else {
+addMessage("error", "Error: " + (data.error || "Unknown"));
+if(currentModel !== "fast"){currentModel = "fast";document.getElementById("modelSelect").value = "fast";addMessage("ai","Switched to Nemotron 120B. Please try again.","System");}
+}
+} catch(err){
+hideTyping();
+addMessage("error", "Connection error. Please try again.");
+}
+isGenerating = false;
+document.getElementById("sendBtn").disabled = false;
+document.getElementById("input").focus();
+}
+
+document.getElementById("input").focus();
+</script>
+</body>
+</html>
