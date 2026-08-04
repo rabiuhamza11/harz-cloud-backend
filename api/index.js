@@ -14,7 +14,7 @@ const conversationStore = require('./channels/conversations');
 const channelConfig = require('./channels/config');
 
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+try { require('dotenv').config(); } catch(e) { /* dotenv optional */ }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
