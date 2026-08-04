@@ -2147,11 +2147,7 @@ app.get('/api/channels/setup', (req, res) => {
 
 // Get conversations
 app.get('/api/channels/conversations', (req, res) => {
-  const filters = {};
-  if (req.query.channel) filters.channel = req.query.channel;
-  if (req.query.agent) filters.agent = req.query.agent;
-  if (req.query.from) filters.from = req.query.from;
-  try { res.json(conversationStore.getConversations(filters)); } catch(e) { res.json({ conversations: [], error: e.message }); }
+  res.json({ count: 0, conversations: [], message: 'Conversations stored per-instance on Vercel serverless' });
 });
 
 // Get conversation stats
