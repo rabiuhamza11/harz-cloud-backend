@@ -2205,6 +2205,485 @@ app.post('/api/channels/send', authRequired, async (req, res) => {
 });
 
 
+
+// ===== PAYSTACK PAYMENTS =====
+const { Paystack } = require('../paystack');
+
+app.post('/api/payments/initialize', authRequired, async (req, res) => {
+  try {
+    const { amount, email, reference, callback_url } = req.body;
+    if (!amount || !email) return res.status(400).json({ error: 'amount and email required' });
+    const result = await Paystack.initializeTransaction({ amount, email, reference, callback_url });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/payments/verify/:reference', async (req, res) => {
+  try {
+    const result = await Paystack.verifyTransaction(req.params.reference);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/payments/list', authRequired, async (req, res) => {
+  try {
+    const result = await Paystack.listTransactions(req.query);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/payments/refund', authRequired, async (req, res) => {
+  try {
+    const { reference, amount } = req.body;
+    const result = await Paystack.refund(reference, amount);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== EMAIL SERVICE =====
+const { sendEmail, listTemplates, TEMPLATES } = require('../email-service');
+
+app.post('/api/email/send', authRequired, async (req, res) => {
+  try {
+    const { to, template, data, subject, html } = req.body;
+    if (!to) return res.status(400).json({ error: 'recipient required' });
+    const result = await sendEmail({ to, template, data, subject, html });
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/email/templates', (req, res) => {
+  res.json({ templates: listTemplates() });
+});
+
+// ===== SMS SERVICE =====
+const { sendSMS, SMS_TEMPLATES } = require('../sms-service');
+
+app.post('/api/sms/send', authRequired, async (req, res) => {
+  try {
+    const { to, message, template, data } = req.body;
+    if (!to || (!message && !template)) return res.status(400).json({ error: 'to and message/template required' });
+    const result = await sendSMS({ to, message, template, data });
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sms/templates', (req, res) => {
+  res.json({ templates: SMS_TEMPLATES });
+});
+
+// ===== TWO-FACTOR AUTH =====
+const { generateSecret, generateTOTP, verifyTOTP, enable2FA, verify2FA, generateBackupCodes } = require('../two-factor');
+
+app.post('/api/2fa/setup', authRequired, (req, res) => {
+  try {
+    const secret = generateSecret(req.user.id);
+    const otp = generateTOTP(secret);
+    res.json({ secret, otp, message: 'Scan QR code with your authenticator app' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/2fa/verify', authRequired, (req, res) => {
+  try {
+    const { code } = req.body;
+    const result = verify2FA(req.user.id, code);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/2fa/backup-codes', authRequired, (req, res) => {
+  try {
+    const codes = generateBackupCodes(req.user.id);
+    res.json({ codes, message: 'Save these backup codes securely' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== PASSWORD RESET =====
+const { requestReset, verifyReset } = require('../password-reset');
+
+app.post('/api/auth/password-reset/request', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await requestReset(email);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/auth/password-reset/verify', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    const result = verifyReset(token, newPassword);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== ANALYTICS =====
+const { trackEvent, getAnalyticsSummary, getActiveUsers, getFunnel, getUserJourney } = require('../analytics');
+
+app.post('/api/analytics/track', (req, res) => {
+  try {
+    trackEvent(req.body);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/summary', (req, res) => {
+  try {
+    const summary = getAnalyticsSummary(req.query);
+    res.json(summary);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/active-users', (req, res) => {
+  try {
+    const users = getActiveUsers(req.query);
+    res.json({ users });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/funnel', (req, res) => {
+  try {
+    const funnel = getFunnel(req.query);
+    res.json(funnel);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/analytics/user-journey/:userId', (req, res) => {
+  try {
+    const journey = getUserJourney(req.params.userId);
+    res.json(journey);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== MEMORY SYSTEM =====
+const { storeMemory, retrieveMemory, getConversationContext, storeConversation, learnFact, storePreference, storeInstruction, deleteMemory } = require('../memory');
+
+app.post('/api/memory/store', authRequired, (req, res) => {
+  try {
+    const result = storeMemory(req.user.id, req.body);
+    res.json({ success: true, memory: result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/memory/retrieve', authRequired, (req, res) => {
+  try {
+    const memories = retrieveMemory(req.user.id, req.query);
+    res.json({ memories });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/memory/context/:userId', (req, res) => {
+  try {
+    const context = getConversationContext(req.params.userId);
+    res.json(context);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/memory/conversation', authRequired, (req, res) => {
+  try {
+    const result = storeConversation(req.user.id, req.body);
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/memory/fact', authRequired, (req, res) => {
+  try {
+    const result = learnFact(req.user.id, req.body);
+    res.json({ success: true, fact: result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/memory/:id', authRequired, (req, res) => {
+  try {
+    const result = deleteMemory(req.user.id, req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== SEARCH =====
+const { search } = require('../search');
+
+app.get('/api/search', (req, res) => {
+  try {
+    const results = search(req.query.q || '', req.query);
+    res.json({ query: req.query.q, results });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== STORAGE =====
+const { Storage } = require('../storage');
+
+app.post('/api/storage/upload', authRequired, async (req, res) => {
+  try {
+    const result = await Storage.upload(req.body);
+    res.json({ success: true, url: result.url, key: result.key });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/storage/:key', (req, res) => {
+  try {
+    const file = Storage.get(req.params.key);
+    res.json(file);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/storage/:key', authRequired, (req, res) => {
+  try {
+    const result = Storage.delete(req.params.key);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== RBAC =====
+const { canAccess, getAllowedActions, listRoles, getRoleInfo } = require('../rbac');
+
+app.get('/api/rbac/roles', (req, res) => {
+  res.json({ roles: listRoles() });
+});
+
+app.get('/api/rbac/roles/:role', (req, res) => {
+  try {
+    const info = getRoleInfo(req.params.role);
+    res.json(info);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/rbac/permissions/:role/:entity', authRequired, (req, res) => {
+  try {
+    const actions = getAllowedActions(req.params.role, req.params.entity);
+    res.json({ role: req.params.role, entity: req.params.entity, actions });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== API KEYS =====
+const { generateKey, validateKey, revokeKey, listKeys } = require('../api-keys');
+
+app.post('/api/keys/generate', authRequired, (req, res) => {
+  try {
+    const key = generateKey(req.user.id, req.body.scopes || []);
+    res.json({ success: true, key });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/keys', authRequired, (req, res) => {
+  try {
+    const keys = listKeys(req.user.id);
+    res.json({ keys });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/keys/:id', authRequired, (req, res) => {
+  try {
+    const result = revokeKey(req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== SCHEDULER =====
+const { start: startTask, stop: stopTask, list: listTasks, stopAll, SCHEDULED_TASKS } = require('../scheduler');
+
+app.post('/api/scheduler/tasks', authRequired, (req, res) => {
+  try {
+    const task = startTask(req.body);
+    res.json({ success: true, task });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/scheduler/tasks', (req, res) => {
+  res.json({ tasks: listTasks() });
+});
+
+app.delete('/api/scheduler/tasks/:id', authRequired, (req, res) => {
+  try {
+    const result = stopTask(req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/scheduler/tasks', authRequired, (req, res) => {
+  try {
+    const result = stopAll();
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== ORCHESTRATOR =====
+const { createTask, delegateTask, executeTask, createPipeline, broadcastToAgents, getAgentStatus, getAllAgentsStatus } = require('../orchestrator');
+
+app.post('/api/orchestrator/tasks', authRequired, (req, res) => {
+  try {
+    const task = createTask(req.body);
+    res.json({ success: true, task });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/orchestrator/delegate', authRequired, (req, res) => {
+  try {
+    const result = delegateTask(req.body);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/orchestrator/execute/:taskId', authRequired, async (req, res) => {
+  try {
+    const result = await executeTask(req.params.taskId);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/orchestrator/pipeline', authRequired, (req, res) => {
+  try {
+    const pipeline = createPipeline(req.body);
+    res.json({ success: true, pipeline });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/orchestrator/broadcast', authRequired, (req, res) => {
+  try {
+    const result = broadcastToAgents(req.body);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/orchestrator/agents', (req, res) => {
+  try {
+    const statuses = getAllAgentsStatus();
+    res.json(statuses);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/orchestrator/agents/:name', (req, res) => {
+  try {
+    const status = getAgentStatus(req.params.name);
+    res.json(status);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== SSO =====
+const { createSession, verifyToken: verifySSO, refreshSession, createPlatformToken, getLoginUrl, listPlatforms: listSSOPlatforms, verifyPlatformToken } = require('../sso');
+
+app.get('/api/sso/platforms', (req, res) => {
+  res.json({ platforms: listSSOPlatforms() });
+});
+
+app.post('/api/sso/login', async (req, res) => {
+  try {
+    const { platform, userId } = req.body;
+    const session = createSession(platform, userId);
+    res.json(session);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sso/verify', (req, res) => {
+  try {
+    const result = verifySSO(req.body.token);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sso/refresh', (req, res) => {
+  try {
+    const result = refreshSession(req.body.token);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sso/login-url/:platform', (req, res) => {
+  try {
+    const url = getLoginUrl(req.params.platform, req.query);
+    res.json({ url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== BACKUP =====
+const { runBackup, ENTITIES } = require('../backup');
+
+app.post('/api/backup/run', authRequired, async (req, res) => {
+  try {
+    const result = await runBackup();
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/backup/entities', (req, res) => {
+  res.json({ entities: ENTITIES });
+});
+
+// ===== DATA EXPORT =====
+const { exportEntity, exportAll, importEntity } = require('../data-export');
+
+app.get('/api/export/:entity', authRequired, (req, res) => {
+  try {
+    const data = exportEntity(req.params.entity);
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/export', authRequired, (req, res) => {
+  try {
+    const data = exportAll();
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/import/:entity', authRequired, (req, res) => {
+  try {
+    const result = importEntity(req.params.entity, req.body);
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== SESSION RECORDER =====
+const { startSession, recordSessionEvent, endSession, getSessionReplay, listSessions, getSessionStats } = require('../session-recorder');
+
+app.post('/api/sessions/start', authRequired, (req, res) => {
+  try {
+    const session = startSession(req.user.id, req.body);
+    res.json({ success: true, session });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sessions/:id/event', authRequired, (req, res) => {
+  try {
+    const result = recordSessionEvent(req.params.id, req.body);
+    res.json({ success: true, result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sessions/:id/end', authRequired, (req, res) => {
+  try {
+    const result = endSession(req.params.id);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sessions/:id/replay', authRequired, (req, res) => {
+  try {
+    const replay = getSessionReplay(req.params.id);
+    res.json(replay);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sessions', authRequired, (req, res) => {
+  try {
+    const sessions = listSessions(req.query);
+    res.json({ sessions });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/sessions/stats', (req, res) => {
+  try {
+    const stats = getSessionStats(req.query);
+    res.json(stats);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== RATE LIMITER (as middleware demonstration) =====
+const { checkLimit, limits } = require('../rate-limiter');
+app.get('/api/rate-limits', (req, res) => {
+  res.json({ limits });
+});
+
 // ===== 404 =====
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
