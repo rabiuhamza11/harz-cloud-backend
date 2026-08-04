@@ -16,6 +16,12 @@ jobs:
           node-version: '20'
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
+      - name: Create Vercel Project Link
+        run: |
+          mkdir -p .vercel
+          cat > .vercel/project.json << EOF
+          {"projectId":"${{ secrets.HARZ_CLOUD_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}","settings":{}}
+          EOF
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
