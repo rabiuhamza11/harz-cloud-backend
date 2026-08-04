@@ -2559,7 +2559,11 @@ app.get('/api/sso/platforms', (req, res) => {
 
 app.post('/api/sso/login', (req, res) => {
   if (!createSSOSession) return res.status(503).json({ error: 'SSO not configured' });
-  try { res.json(createSSOSession(req.body.platform, req.body.userId)); }
+  try { 
+    const platform = req.body?.platform || 'default';
+    const userId = req.body?.userId || 'guest';
+    res.json(createSSOSession(platform, userId)); 
+  }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
