@@ -1,16 +1,11 @@
 services:
   - type: web
     name: harz-cloud-backend
-    runtime: node
-    plan: free
-    region: frankfurt
-    branch: main
+    env: node
     buildCommand: npm install
-    startCommand: node server.js
-    healthCheckPath: /health
+    startCommand: npm start
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: JWT_SECRET
-        generateValue: true
-    autoDeploy: true
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
