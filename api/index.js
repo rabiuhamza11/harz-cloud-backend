@@ -1778,6 +1778,32 @@ const DATA = {
   ]
 };
 
+
+
+// ===== LIVES STILLNESS — Master Project =====
+const PROJECTS = [
+  {
+    id: 'proj_lives_stillness',
+    name: 'Lives Stillness',
+    description: 'The master project holding the entire HARZ Ecosystem. 49 platforms, 62 repositories, 7 AI agents, wallet, analytics.',
+    icon: '🌌',
+    status: 'Live',
+    url: 'https://harz-cloud-backend.vercel.app',
+    createdAt: '2026-08-04T13:23:00Z',
+    platforms: DATA.platforms.map(p => p.name),
+    repositories: DATA.repositories.map(r => r.name),
+    agents: DATA.agents.map(a => a.name),
+    wallet: DATA.wallet,
+    stats: {
+      totalPlatforms: DATA.platforms.length,
+      totalRepositories: DATA.repositories.length,
+      totalAgents: DATA.agents.length,
+      livePlatforms: DATA.platforms.filter(p => p.status === 'Live').length,
+      totalRevenue: DATA.platforms.reduce((s, p) => s + (p.revenue || 0), 0)
+    }
+  }
+];
+
 // ===== HEALTH =====
 app.get('/health', (req, res) => {
   res.json({
@@ -1820,7 +1846,13 @@ app.get('/', (req, res) => {
       'POST /api/auth/register',
       'GET /api/user/profile',
       'GET /api/analytics/events',
-      'POST /api/sync/github'
+      'POST /api/sync/github',
+      'GET  /api/projects',
+      'GET  /api/projects/:id',
+      'GET  /api/projects/:id/platforms',
+      'GET  /api/projects/:id/repositories',
+      'GET  /api/projects/:id/agents',
+      'GET  /api/projects/:id/stats'
     ]
   });
 });
@@ -2012,6 +2044,50 @@ app.post('/api/sync/github', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+
+// ===== PROJECTS (Lives Stillness) =====
+app.get('/api/projects', (req, res) => {
+  res.json({ count: PROJECTS.length, projects: PROJECTS });
+});
+
+app.get('/api/projects/:id', (req, res) => {
+  const p = PROJECTS.find(p => p.id === req.params.id || p.name.toLowerCase().replace(/ /g, '_') === req.params.id.toLowerCase().replace(/ /g, '_'));
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json(p);
+});
+
+app.get('/api/projects/:id/platforms', (req, res) => {
+  const p = PROJECTS.find(p => p.id === req.params.id || p.name.toLowerCase().replace(/ /g, '_') === req.params.id.toLowerCase().replace(/ /g, '_'));
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json({ count: p.platforms.length, platforms: DATA.platforms.filter(pl => p.platforms.includes(pl.name)) });
+});
+
+app.get('/api/projects/:id/repositories', (req, res) => {
+  const p = PROJECTS.find(p => p.id === req.params.id || p.name.toLowerCase().replace(/ /g, '_') === req.params.id.toLowerCase().replace(/ /g, '_'));
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json({ count: p.repositories.length, repositories: DATA.repositories.filter(r => p.repositories.includes(r.name)) });
+});
+
+app.get('/api/projects/:id/agents', (req, res) => {
+  const p = PROJECTS.find(p => p.id === req.params.id || p.name.toLowerCase().replace(/ /g, '_') === req.params.id.toLowerCase().replace(/ /g, '_'));
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json({ count: p.agents.length, agents: DATA.agents.filter(a => p.agents.includes(a.name)) });
+});
+
+app.get('/api/projects/:id/stats', (req, res) => {
+  const p = PROJECTS.find(p => p.id === req.params.id || p.name.toLowerCase().replace(/ /g, '_') === req.params.id.toLowerCase().replace(/ /g, '_'));
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json({
+    project: p.name,
+    platforms: { total: p.stats.totalPlatforms, live: p.stats.livePlatforms },
+    repositories: p.stats.totalRepositories,
+    agents: p.stats.totalAgents,
+    wallet: p.wallet,
+    revenue: p.stats.totalRevenue
+  });
+});
+
 
 // ===== 404 =====
 app.use((req, res) => {
