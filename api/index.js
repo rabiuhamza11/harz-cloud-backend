@@ -2665,6 +2665,219 @@ app.get('/api/rate-limits', (req, res) => {
   res.json({ limits: rateLimits || {} });
 });
 
+
+// ===== TELEGRAM BOT WEBHOOK =====
+const { sendTelegramMessage, setTelegramWebhook, getTelegramUpdates } = require('../telegram-bot');
+
+app.get('/webhooks/telegram', (req, res) => {
+  res.json({ status: 'ok', message: 'Telegram webhook is active' });
+});
+
+app.post('/webhooks/telegram', async (req, res) => {
+  try {
+    const update = req.body;
+    const message = update.message;
+    
+    if (!message || !message.text) {
+      return res.json({ success: true, message: 'No text message' });
+    }
+    
+    const chatId = message.chat.id;
+    const text = message.text;
+    const userId = message.from.id.toString();
+    const userName = message.from.first_name || 'User';
+    
+    // Route to HARZ Cloud agent
+    let agent = 'General';
+    let confidence = 0.5;
+    
+    try {
+      const routeResp = await fetch('https://harz-cloud-backend.vercel.app/api/channels/route-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, userId })
+      });
+      if (routeResp.ok) {
+        const route = await routeResp.json();
+        agent = route.agent || 'General';
+        confidence = route.confidence || 0.5;
+      }
+    } catch(e) {
+      // Fallback routing
+      const lower = text.toLowerCase();
+      if (lower.match(/ciwo|sick|pain|health|magani|disease|fever|jinya/)) agent = 'Magani';
+      else if (lower.match(/security|hack|virus|malware|cyber|shield/)) agent = 'CyberShield Agent';
+      else if (lower.match(/deploy|server|devops|build|code|git/)) agent = 'Omega Commander';
+      else if (lower.match(/stress|mental|mind|anxiety|depression/)) agent = 'MindCare Agent';
+      else if (lower.match(/money|finance|education|school|learn/)) agent = 'EduWealth Agent';
+      else if (lower.match(/content|write|article|blog|post/)) agent = 'Content Agent';
+    }
+    
+    // Build response
+    const responses = {
+      'Magani': `🩺 *Magani (Health Agent)*\n\nSalaam ${userName}! I can help with health questions — symptoms, medications, wellness.\n\nYou said: "${text}"`,
+      'CyberShield Agent': `🛡️ *CyberShield Agent*\n\nHi ${userName}! I handle security — malware, vulnerabilities, safety.\n\nYou said: "${text}"`,
+      'Omega Commander': `⚙️ *Omega Commander*\n\nHello ${userName}! DevOps, deployments, infrastructure at your service.\n\nYou said: "${text}"`,
+      'MindCare Agent': `🧠 *MindCare Agent*\n\nHi ${userName} 💙 Mental health support and wellness guidance here.\n\nYou said: "${text}"`,
+      'EduWealth Agent': `📚 *EduWealth Agent*\n\nHello ${userName}! Education and financial planning assistance.\n\nYou said: "${text}"`,
+      'Content Agent': `✍️ *Content Agent*\n\nHi ${userName}! Content creation — articles, posts, marketing copy.\n\nYou said: "${text}"`,
+      'default': `🤖 *HARZ Assistant*\n\nSalaam ${userName}! I'm your HARZ ecosystem assistant.\n\nYou said: "${text}"\n\nI can route you to:\n• Magani (Health)\n• CyberShield (Security)\n• Omega Commander (DevOps)\n• MindCare (Mental Health)\n• EduWealth (Education/Finance)\n• Content Agent`
+    };
+    
+    const reply = responses[agent] || responses['default'];
+    
+    // Send response back to Telegram
+    await sendTelegramMessage(chatId, reply);
+    
+    // Log conversation
+    try {
+      await fetch('https://harz-cloud-backend.vercel.app/api/channels/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'telegram', to: userId, text: reply, agent })
+      });
+    } catch(e) {}
+    
+    res.json({ success: true, agent, confidence });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Telegram setup endpoints
+app.post('/api/telegram/setup', async (req, res) => {
+  try {
+    const result = await setTelegramWebhook();
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/telegram/updates', async (req, res) => {
+  try {
+    const result = await getTelegramUpdates();
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/telegram/send', authRequired, async (req, res) => {
+  try {
+    const { chatId, text } = req.body;
+    const result = await sendTelegramMessage(chatId, text);
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+
+// ===== TWILIO WHATSAPP WEBHOOK =====
+const { sendWhatsAppMessage, listMessages } = require('../twilio-whatsapp');
+
+app.get('/webhooks/twilio', (req, res) => {
+  res.json({ status: 'ok', message: 'Twilio webhook is active' });
+});
+
+app.post('/webhooks/twilio', async (req, res) => {
+  try {
+    // Twilio sends form-encoded data
+    const from = req.body.From || ''; // whatsapp:+1234567890
+    const body = req.body.Body || '';
+    const profileName = req.body.ProfileName || 'User';
+    
+    if (!body) {
+      return res.json({ success: true, message: 'No message body' });
+    }
+    
+    // Route to HARZ Cloud agent
+    let agent = 'General';
+    let confidence = 0.5;
+    
+    try {
+      const routeResp = await fetch('https://harz-cloud-backend.vercel.app/api/channels/route-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: body, userId: from })
+      });
+      if (routeResp.ok) {
+        const route = await routeResp.json();
+        agent = route.agent || 'General';
+        confidence = route.confidence || 0.5;
+      }
+    } catch(e) {
+      const lower = body.toLowerCase();
+      if (lower.match(/ciwo|sick|pain|health|magani|disease|fever|jinya/)) agent = 'Magani';
+      else if (lower.match(/security|hack|virus|malware|cyber|shield/)) agent = 'CyberShield Agent';
+      else if (lower.match(/deploy|server|devops|build|code|git/)) agent = 'Omega Commander';
+      else if (lower.match(/stress|mental|mind|anxiety|depression/)) agent = 'MindCare Agent';
+      else if (lower.match(/money|finance|education|school|learn/)) agent = 'EduWealth Agent';
+      else if (lower.match(/content|write|article|blog|post/)) agent = 'Content Agent';
+    }
+    
+    // Build response
+    const responses = {
+      'Magani': `🩺 *Magani (Health Agent)*\n\nSalaam ${profileName}! I can help with health questions.\n\nYou: "${body}"`,
+      'CyberShield Agent': `🛡️ *CyberShield Agent*\n\nHi ${profileName}! Security assistance here.\n\nYou: "${body}"`,
+      'Omega Commander': `⚙️ *Omega Commander*\n\nHello ${profileName}! DevOps at your service.\n\nYou: "${body}"`,
+      'MindCare Agent': `🧠 *MindCare Agent*\n\nHi ${profileName} 💙 Wellness support here.\n\nYou: "${body}"`,
+      'EduWealth Agent': `📚 *EduWealth Agent*\n\nHello ${profileName}! Education & finance help.\n\nYou: "${body}"`,
+      'Content Agent': `✍️ *Content Agent*\n\nHi ${profileName}! Content creation ready.\n\nYou: "${body}"`,
+      'default': `🤖 *HARZ Assistant*\n\nSalaam ${profileName}! Your HARZ ecosystem assistant.\n\nYou: "${body}"`
+    };
+    
+    const reply = responses[agent] || responses['default'];
+    
+    // Send response back via Twilio WhatsApp
+    await sendWhatsAppMessage(from, reply);
+    
+    // Log to HARZ Cloud
+    try {
+      await fetch('https://harz-cloud-backend.vercel.app/api/channels/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'whatsapp-twilio', to: from, text: reply, agent })
+      });
+    } catch(e) {}
+    
+    // Return TwiML response (Twilio expects this)
+    res.type('text/xml').send(`<Response></Response>`);
+  } catch(e) {
+    res.type('text/xml').send(`<Response></Response>`);
+  }
+});
+
+// Twilio management endpoints
+app.post('/api/twilio/send', authRequired, async (req, res) => {
+  try {
+    const { to, message } = req.body;
+    const result = await sendWhatsAppMessage(to, message);
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/twilio/messages', authRequired, async (req, res) => {
+  try {
+    const result = await listMessages(req.query.limit || 20);
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/twilio/status', (req, res) => {
+  res.json({
+    configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+    number: process.env.TWILIO_WHATSAPP_NUMBER || 'not set',
+    webhook: 'https://harz-cloud-backend.vercel.app/webhooks/twilio'
+  });
+});
+
 // ===== 404 =====
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
