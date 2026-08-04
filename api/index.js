@@ -2240,6 +2240,249 @@ app.post('/api/payments/refund', authRequired, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ===== HARZPAY — BILLS & PAYMENTS =====
+const HARZPAY_BANK = {
+  bank_name: 'United Bank for Africa (UBA)',
+  account_name: 'Rabiu Hamza Mohammed',
+  account_number: '2034326424',
+  bank_code: '033'
+};
+const HARZPAY_USDT = {
+  wallet: 'TVE2ia3UTXUsp8V7USFDG94kdEbJZ1X5Cr',
+  network: 'TRC20'
+};
+const HARZPAY_WHATSAPP = '08028687857';
+const HARZPAY_AFFILIATE = { commission: '10%', status: 'active' };
+
+// Nigerian bill providers (static data for demo)
+const BILL_PROVIDERS = {
+  airtime: [
+    { id: 'mtn', provider_name: 'MTN Nigeria', discount_percent: 2 },
+    { id: 'airtel', provider_name: 'Airtel Nigeria', discount_percent: 2 },
+    { id: 'glo', provider_name: 'Glo Nigeria', discount_percent: 3 },
+    { id: '9mobile', provider_name: '9mobile', discount_percent: 3 }
+  ],
+  data: [
+    { id: 'mtn-data', provider_name: 'MTN Data', discount_percent: 2, plans: ['1000:1GB/30days', '2000:3.5GB/30days', '5500:15GB/30days', '15000:75GB/90days'] },
+    { id: 'airtel-data', provider_name: 'Airtel Data', discount_percent: 2, plans: ['1000:1.5GB/30days', '2500:6GB/30days', '5000:14GB/30days'] },
+    { id: 'glo-data', provider_name: 'Glo Data', discount_percent: 3, plans: ['1000:2.35GB/30days', '2500:7.2GB/30days', '5000:16.75GB/30days'] },
+    { id: '9mobile-data', provider_name: '9mobile Data', discount_percent: 3, plans: ['1000:1GB/30days', '2000:2.5GB/30days', '5000:11GB/30days'] }
+  ],
+  electricity: [
+    { id: 'ikedc', provider_name: 'Ikeja Electric (IKEDC)', discount_percent: 1 },
+    { id: 'ekedc', provider_name: 'Eko Electric (EKEDC)', discount_percent: 1 },
+    { id: 'aedc', provider_name: 'Abuja Electric (AEDC)', discount_percent: 1 },
+    { id: 'phed', provider_name: 'Port Harcourt Electric (PHED)', discount_percent: 1 },
+    { id: 'ibedc', provider_name: 'Ibadan Electric (IBEDC)', discount_percent: 1 },
+    { id: 'kaedco', provider_name: 'Kano Electric (KAEDCO)', discount_percent: 1 }
+  ],
+  cable_tv: [
+    { id: 'dstv', provider_name: 'DStv', discount_percent: 1, plans: ['4150:Confam/1month', '10500:Compact/1month', '18500:Compact Plus/1month', '30500:Premium/1month'] },
+    { id: 'gotv', provider_name: 'GOtv', discount_percent: 1, plans: ['1900:Smallie/1month', '3900:Jinja/1month', '5600:Max/1month'] },
+    { id: 'startimes', provider_name: 'StarTimes', discount_percent: 2, plans: ['1850:Basic/1month', '3700:Smart/1month', '6200:Super/1month'] }
+  ],
+  internet: [
+    { id: 'spectranet', provider_name: 'Spectranet', discount_percent: 0, plans: ['7500:10GB/30days', '15000:20GB/30days', '25000:40GB/30days'] },
+    { id: 'smile', provider_name: 'Smile', discount_percent: 0, plans: ['5000:5GB/30days', '10000:12GB/30days', '20000:25GB/30days'] }
+  ],
+  water: [
+    { id: 'lagos-water', provider_name: 'Lagos Water Corporation', discount_percent: 0 },
+    { id: 'abuja-water', provider_name: 'Abuja Water Board', discount_percent: 0 }
+  ]
+};
+
+// HarzPay: Get payment options
+app.get('/api/harzpay/options', (req, res) => {
+  res.json({
+    success: true,
+    bank_transfer: HARZPAY_BANK,
+    usdt: HARZPAY_USDT,
+    ussd: `*737*${HARZPAY_BANK.bank_code}*${HARZPAY_BANK.account_number}*AMOUNT#`,
+    whatsapp: HARZPAY_WHATSAPP,
+    affiliate: HARZPAY_AFFILIATE,
+    paystack: { enabled: !!Paystack, note: 'Card payments via Paystack' }
+  });
+});
+
+// HarzPay: Generate payment reference
+app.post('/api/harzpay/reference', (req, res) => {
+  const { amount } = req.body;
+  const ref = 'HARZ-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+  res.json({
+    success: true,
+    reference: ref,
+    amount: amount || 0,
+    bank: HARZPAY_BANK,
+    usdt: HARZPAY_USDT,
+    ussd: `*737*${HARZPAY_BANK.bank_code}*${HARZPAY_BANK.account_number}*${amount || 'AMOUNT'}#`,
+    whatsapp: HARZPAY_WHATSAPP
+  });
+});
+
+// HarzPay: Get bill providers
+app.get('/api/harzpay/bills/:type', (req, res) => {
+  const { type } = req.params;
+  const providers = BILL_PROVIDERS[type];
+  if (!providers) return res.status(400).json({ error: 'Invalid bill type. Use: airtime, data, electricity, cable_tv, internet, water' });
+  res.json({ bill_type: type, providers });
+});
+
+// HarzPay: Pay bill
+app.post('/api/harzpay/bills/pay', async (req, res) => {
+  const { bill_type, provider_id, amount, phone, name, email, meter } = req.body;
+  
+  if (!bill_type || !provider_id || !amount) {
+    return res.status(400).json({ error: 'bill_type, provider_id, and amount are required' });
+  }
+  
+  const providers = BILL_PROVIDERS[bill_type];
+  if (!providers) return res.status(400).json({ error: 'Invalid bill type' });
+  
+  const provider = providers.find(p => p.id === provider_id);
+  if (!provider) return res.status(400).json({ error: 'Provider not found' });
+  
+  // Calculate discount
+  const discount = provider.discount_percent || 0;
+  const discountAmount = Math.round(amount * discount / 100);
+  const finalAmount = amount - discountAmount;
+  
+  // Generate reference
+  const reference = 'HARZ-' + Date.now().toString(36).toUpperCase();
+  
+  // Create transaction record
+  const transaction = {
+    id: Date.now().toString(),
+    reference,
+    bill_type,
+    provider: provider.provider_name,
+    provider_id,
+    amount,
+    discount: discountAmount,
+    final_amount: finalAmount,
+    phone: phone || '',
+    name: name || '',
+    email: email || '',
+    meter: meter || '',
+    status: 'pending',
+    created_at: new Date().toISOString()
+  };
+  
+  // If Paystack is configured, initialize payment
+  if (Paystack && email) {
+    try {
+      const payResult = await Paystack.initialize({
+        amount: finalAmount,
+        email: email,
+        reference: reference,
+        callback_url: req.headers.origin || 'https://harzpay.vercel.app'
+      });
+      transaction.paystack = payResult;
+      transaction.payment_url = payResult.data?.authorization_url || null;
+    } catch(e) {
+      transaction.payment_error = e.message;
+    }
+  }
+  
+  // Record in wallet transactions
+  try {
+    if (typeof DATA.transactions !== 'undefined') {
+      DATA.transactions.push({
+        amount: finalAmount,
+        currency: 'NGN',
+        type: 'bill_payment',
+        status: transaction.payment_url ? 'pending' : 'awaiting_payment',
+        description: `${provider.provider_name} - ${bill_type}`,
+        recipient: phone || meter || '',
+        reference,
+        platform: 'HarzPay'
+      });
+    }
+  } catch(e) {}
+  
+  res.json({
+    success: true,
+    transaction,
+    payment_options: {
+      bank: HARZPAY_BANK,
+      usdt: HARZPAY_USDT,
+      ussd: `*737*${HARZPAY_BANK.bank_code}*${HARZPAY_BANK.account_number}*${finalAmount}#`,
+      paystack: transaction.payment_url || null,
+      whatsapp: HARZPAY_WHATSAPP
+    }
+  });
+});
+
+// HarzPay: Verify bill payment
+app.get('/api/harzpay/verify/:reference', async (req, res) => {
+  const { reference } = req.params;
+  
+  // Try Paystack verification
+  if (Paystack) {
+    try {
+      const result = await Paystack.verify(reference);
+      if (result.data && result.data.status === 'success') {
+        return res.json({
+          success: true,
+          status: 'completed',
+          reference,
+          amount: result.data.amount / 100,
+          provider: result.data.channel,
+          paid_at: result.data.paid_at
+        });
+      }
+    } catch(e) {}
+  }
+  
+  // Manual verification (bank transfer confirmation)
+  res.json({
+    success: true,
+    status: 'pending',
+    reference,
+    message: 'Payment verification pending. Contact us on WhatsApp: ' + HARZPAY_WHATSAPP
+  });
+});
+
+// HarzPay: USDT verification
+app.post('/api/harzpay/verify-usdt', (req, res) => {
+  const { txid } = req.body;
+  if (!txid) return res.status(400).json({ error: 'Transaction ID (txid) required' });
+  
+  // In production, verify via Tronscan API
+  res.json({
+    success: true,
+    status: 'verifying',
+    txid,
+    wallet: HARZPAY_USDT.wallet,
+    network: HARZPAY_USDT.network,
+    message: 'USDT payment verification in progress. You will be notified once confirmed.'
+  });
+});
+
+// HarzPay: Get wallet balance
+app.get('/api/harzpay/balance', (req, res) => {
+  res.json({
+    success: true,
+    wallet: HARZPAY_USDT.wallet,
+    network: HARZPAY_USDT.network,
+    note: 'Use Tronscan API to check live balance',
+    tronscan_url: `https://tronscan.org/#/address/${HARZPAY_USDT.wallet}`
+  });
+});
+
+// HarzPay: Affiliate program
+app.get('/api/harzpay/affiliate', (req, res) => {
+  res.json({
+    success: true,
+    commission_rate: HARZPAY_AFFILIATE.commission,
+    status: HARZPAY_AFFILIATE.status,
+    how_it_works: 'Share your referral link. Earn 10% commission on every payment made by your referrals.',
+    referral_link: 'https://harzpay.vercel.app?ref=YOUR_CODE',
+    payout: 'Monthly via bank transfer or USDT'
+  });
+});
+
+
 // ===== EMAIL SERVICE =====
 let sendEmail, listTemplates, EMAIL_TEMPLATES;
 try { ({ sendEmail, listTemplates, TEMPLATES: EMAIL_TEMPLATES } = require('../email-service')); } catch(e) { console.log('email module skipped:', e.message); }
