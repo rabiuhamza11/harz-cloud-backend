@@ -2018,7 +2018,4 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
 });
 
-app.listen(PORT, () => {
-  console.log('HARZ Cloud Backend v3.0 on port ' + PORT);
-  console.log('Platforms: ' + DATA.platforms.length + ' | Repos: ' + DATA.repositories.length + ' | Agents: ' + DATA.agents.length);
-});
+module.exports = app;

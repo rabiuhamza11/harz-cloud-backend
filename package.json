@@ -3,15 +3,12 @@
     "express": "^4.19.2",
     "cors": "^2.8.5",
     "jsonwebtoken": "^9.0.2",
-    "dotenv": "^16.4.5",
-    "bcryptjs": "^2.4.3",
-    "uuid": "^9.0.1"
+    "dotenv": "^16.4.5"
   },
   "name": "harz-cloud-backend",
   "version": "3.0.0",
-  "description": "HARZ Cloud Backend v3.0 \u2014 Full Ecosystem API on Render",
+  "description": "HARZ Cloud Backend v3.0 \u2014 Full Ecosystem API on Vercel",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node server.js"
   }
 }
