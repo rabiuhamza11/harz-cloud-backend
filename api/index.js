@@ -2878,6 +2878,134 @@ app.get('/api/twilio/status', (req, res) => {
   });
 });
 
+
+// ===== MAYTAPI WHATSAPP WEBHOOK =====
+let maytapiSend, maytapiGetPhones, maytapiCheckStatus;
+try { ({ sendMessage: maytapiSend, getPhones: maytapiGetPhones, checkPhoneStatus: maytapiCheckStatus } = require('../maytapi-client')); } catch(e) { console.log('maytapi module skipped:', e.message); }
+
+app.get('/webhooks/maytapi', (req, res) => {
+  res.json({ status: 'ok', message: 'Maytapi webhook is active' });
+});
+
+app.post('/webhooks/maytapi', async (req, res) => {
+  try {
+    const data = req.body;
+    
+    // Maytapi webhook format
+    if (!data || !data.message) {
+      return res.json({ success: true, message: 'No message' });
+    }
+    
+    const from = data.message.from || '';
+    const text = data.message.text || '';
+    const userName = data.message.name || 'User';
+    
+    if (!text) {
+      return res.json({ success: true, message: 'No text' });
+    }
+    
+    // Route to HARZ Cloud agent
+    let agent = 'General';
+    let confidence = 0.5;
+    
+    try {
+      const routeResp = await fetch('https://harz-cloud-backend.vercel.app/api/channels/route-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, userId: from })
+      });
+      if (routeResp.ok) {
+        const route = await routeResp.json();
+        agent = route.agent || 'General';
+        confidence = route.confidence || 0.5;
+      }
+    } catch(e) {
+      const lower = text.toLowerCase();
+      if (lower.match(/ciwo|sick|pain|health|magani|disease|fever|jinya/)) agent = 'Magani';
+      else if (lower.match(/security|hack|virus|malware|cyber|shield/)) agent = 'CyberShield Agent';
+      else if (lower.match(/deploy|server|devops|build|code|git/)) agent = 'Omega Commander';
+      else if (lower.match(/stress|mental|mind|anxiety|depression/)) agent = 'MindCare Agent';
+      else if (lower.match(/money|finance|education|school|learn/)) agent = 'EduWealth Agent';
+      else if (lower.match(/content|write|article|blog|post/)) agent = 'Content Agent';
+    }
+    
+    // Build response
+    const responses = {
+      'Magani': `🩺 *Magani (Health Agent)*\n\nSalaam ${userName}! I can help with health questions.\n\nYou: "${text}"`,
+      'CyberShield Agent': `🛡️ *CyberShield Agent*\n\nHi ${userName}! Security assistance here.\n\nYou: "${text}"`,
+      'Omega Commander': `⚙️ *Omega Commander*\n\nHello ${userName}! DevOps at your service.\n\nYou: "${text}"`,
+      'MindCare Agent': `🧠 *MindCare Agent*\n\nHi ${userName} 💙 Wellness support here.\n\nYou: "${text}"`,
+      'EduWealth Agent': `📚 *EduWealth Agent*\n\nHello ${userName}! Education & finance help.\n\nYou: "${text}"`,
+      'Content Agent': `✍️ *Content Agent*\n\nHi ${userName}! Content creation ready.\n\nYou: "${text}"`,
+      'default': `🤖 *HARZ Assistant*\n\nSalaam ${userName}! Your HARZ ecosystem assistant.\n\nYou: "${text}"\n\nI can route you to:\n• Magani (Health)\n• CyberShield (Security)\n• Omega Commander (DevOps)\n• MindCare (Mental Health)\n• EduWealth (Education/Finance)\n• Content Agent`
+    };
+    
+    const reply = responses[agent] || responses['default'];
+    
+    // Send response back via Maytapi
+    if (maytapiSend) {
+      await maytapiSend(from, reply);
+    }
+    
+    res.json({ success: true, agent, confidence, routed: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Maytapi management endpoints
+app.get('/api/maytapi/status', (req, res) => {
+  try {
+    res.json({
+      configured: !!(process.env.MAYTAPI_TOKEN && process.env.MAYTAPI_PRODUCT_ID && process.env.MAYTAPI_PHONE_ID),
+      webhook: 'https://harz-cloud-backend.vercel.app/webhooks/maytapi',
+      owner_number: '+2348028687857',
+      message: 'Maytapi lets you use your own WhatsApp number without Meta approval'
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/maytapi/phones', async (req, res) => {
+  if (!maytapiGetPhones) return res.status(503).json({ error: 'Maytapi not configured' });
+  try { res.json(await maytapiGetPhones()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/maytapi/check', async (req, res) => {
+  if (!maytapiCheckStatus) return res.status(503).json({ error: 'Maytapi not configured' });
+  try { res.json(await maytapiCheckStatus()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/maytapi/send', authRequired, async (req, res) => {
+  if (!maytapiSend) return res.status(503).json({ error: 'Maytapi not configured' });
+  try {
+    const { to, message } = req.body;
+    const result = await maytapiSend(to, message);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ===== WHATSAPP CONFIG =====
+const { WHATSAPP_CONFIG } = require('../whatsapp-config');
+
+app.get('/api/whatsapp/config', (req, res) => {
+  res.json({
+    owner_number: WHATSAPP_CONFIG.ownerNumberIntl,
+    webhook_url: WHATSAPP_CONFIG.webhookUrl,
+    providers: Object.keys(WHATSAPP_CONFIG.providers).map(k => ({
+      id: k,
+      name: WHATSAPP_CONFIG.providers[k].name,
+      webhook: WHATSAPP_CONFIG.providers[k].webhook,
+      setup_url: WHATSAPP_CONFIG.providers[k].setup
+    }))
+  });
+});
+
+app.get('/api/whatsapp/providers', (req, res) => {
+  res.json({ providers: WHATSAPP_CONFIG.providers });
+});
+
 // ===== 404 =====
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
