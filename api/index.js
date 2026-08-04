@@ -2210,7 +2210,7 @@ app.post('/api/payments/initialize', authRequired, async (req, res) => {
   try {
     const { amount, email, reference, callback_url } = req.body;
     if (!amount || !email) return res.status(400).json({ error: 'amount and email required' });
-    const result = await Paystack.initializeTransaction({ amount, email, reference, callback_url });
+    const result = await Paystack.initialize({ amount, email, reference, callback_url });
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2218,7 +2218,7 @@ app.post('/api/payments/initialize', authRequired, async (req, res) => {
 app.get('/api/payments/verify/:reference', async (req, res) => {
   if (!Paystack) return res.status(503).json({ error: 'Paystack not configured' });
   try {
-    const result = await Paystack.verifyTransaction(req.params.reference);
+    const result = await Paystack.verify(req.params.reference);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
