@@ -2207,9 +2207,10 @@ app.post('/api/channels/send', authRequired, async (req, res) => {
 
 
 // ===== PAYSTACK PAYMENTS =====
-const { Paystack } = require('../paystack');
+let Paystack; try { Paystack = require('../paystack').Paystack; } catch(e) { console.log('paystack module skipped:', e.message); }
 
 app.post('/api/payments/initialize', authRequired, async (req, res) => {
+  if (!Paystack) return res.status(503).json({ error: 'Paystack not configured' });
   try {
     const { amount, email, reference, callback_url } = req.body;
     if (!amount || !email) return res.status(400).json({ error: 'amount and email required' });
@@ -2219,6 +2220,7 @@ app.post('/api/payments/initialize', authRequired, async (req, res) => {
 });
 
 app.get('/api/payments/verify/:reference', async (req, res) => {
+  if (!Paystack) return res.status(503).json({ error: 'Paystack not configured' });
   try {
     const result = await Paystack.verifyTransaction(req.params.reference);
     res.json(result);
@@ -2226,6 +2228,7 @@ app.get('/api/payments/verify/:reference', async (req, res) => {
 });
 
 app.get('/api/payments/list', authRequired, async (req, res) => {
+  if (!Paystack) return res.status(503).json({ error: 'Paystack not configured' });
   try {
     const result = await Paystack.listTransactions(req.query);
     res.json(result);
@@ -2233,6 +2236,7 @@ app.get('/api/payments/list', authRequired, async (req, res) => {
 });
 
 app.post('/api/payments/refund', authRequired, async (req, res) => {
+  if (!Paystack) return res.status(503).json({ error: 'Paystack not configured' });
   try {
     const { reference, amount } = req.body;
     const result = await Paystack.refund(reference, amount);
@@ -2241,9 +2245,11 @@ app.post('/api/payments/refund', authRequired, async (req, res) => {
 });
 
 // ===== EMAIL SERVICE =====
-const { sendEmail, listTemplates, TEMPLATES } = require('../email-service');
+let sendEmail, listTemplates, EMAIL_TEMPLATES;
+try { ({ sendEmail, listTemplates, TEMPLATES: EMAIL_TEMPLATES } = require('../email-service')); } catch(e) { console.log('email module skipped:', e.message); }
 
 app.post('/api/email/send', authRequired, async (req, res) => {
+  if (!sendEmail) return res.status(503).json({ error: 'Email service not configured' });
   try {
     const { to, template, data, subject, html } = req.body;
     if (!to) return res.status(400).json({ error: 'recipient required' });
@@ -2253,13 +2259,15 @@ app.post('/api/email/send', authRequired, async (req, res) => {
 });
 
 app.get('/api/email/templates', (req, res) => {
-  res.json({ templates: listTemplates() });
+  res.json({ templates: EMAIL_TEMPLATES || [] });
 });
 
 // ===== SMS SERVICE =====
-const { sendSMS, SMS_TEMPLATES } = require('../sms-service');
+let sendSMS, SMS_TEMPLATES;
+try { ({ sendSMS, SMS_TEMPLATES } = require('../sms-service')); } catch(e) { console.log('sms module skipped:', e.message); }
 
 app.post('/api/sms/send', authRequired, async (req, res) => {
+  if (!sendSMS) return res.status(503).json({ error: 'SMS service not configured' });
   try {
     const { to, message, template, data } = req.body;
     if (!to || (!message && !template)) return res.status(400).json({ error: 'to and message/template required' });
@@ -2269,13 +2277,15 @@ app.post('/api/sms/send', authRequired, async (req, res) => {
 });
 
 app.get('/api/sms/templates', (req, res) => {
-  res.json({ templates: SMS_TEMPLATES });
+  res.json({ templates: SMS_TEMPLATES || [] });
 });
 
 // ===== TWO-FACTOR AUTH =====
-const { generateSecret, generateTOTP, verifyTOTP, enable2FA, verify2FA, generateBackupCodes } = require('../two-factor');
+let generateSecret, generateTOTP, verify2FA_fn, generateBackupCodes;
+try { ({ generateSecret, generateTOTP, verify2FA: verify2FA_fn, generateBackupCodes } = require('../two-factor')); } catch(e) { console.log('2fa module skipped:', e.message); }
 
 app.post('/api/2fa/setup', authRequired, (req, res) => {
+  if (!generateSecret) return res.status(503).json({ error: '2FA not configured' });
   try {
     const secret = generateSecret(req.user.id);
     const otp = generateTOTP(secret);
@@ -2284,14 +2294,15 @@ app.post('/api/2fa/setup', authRequired, (req, res) => {
 });
 
 app.post('/api/2fa/verify', authRequired, (req, res) => {
+  if (!verify2FA_fn) return res.status(503).json({ error: '2FA not configured' });
   try {
-    const { code } = req.body;
-    const result = verify2FA(req.user.id, code);
+    const result = verify2FA_fn(req.user.id, req.body.code);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/2fa/backup-codes', authRequired, (req, res) => {
+  if (!generateBackupCodes) return res.status(503).json({ error: '2FA not configured' });
   try {
     const codes = generateBackupCodes(req.user.id);
     res.json({ codes, message: 'Save these backup codes securely' });
@@ -2299,389 +2310,359 @@ app.post('/api/2fa/backup-codes', authRequired, (req, res) => {
 });
 
 // ===== PASSWORD RESET =====
-const { requestReset, verifyReset } = require('../password-reset');
+let requestReset, verifyReset;
+try { ({ requestReset, verifyReset } = require('../password-reset')); } catch(e) { console.log('password-reset module skipped:', e.message); }
 
 app.post('/api/auth/password-reset/request', async (req, res) => {
+  if (!requestReset) return res.status(503).json({ error: 'Password reset not configured' });
   try {
-    const { email } = req.body;
-    const result = await requestReset(email);
+    const result = await requestReset(req.body.email);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/auth/password-reset/verify', async (req, res) => {
+  if (!verifyReset) return res.status(503).json({ error: 'Password reset not configured' });
   try {
-    const { token, newPassword } = req.body;
-    const result = verifyReset(token, newPassword);
+    const result = verifyReset(req.body.token, req.body.newPassword);
     res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== ANALYTICS =====
-const { trackEvent, getAnalyticsSummary, getActiveUsers, getFunnel, getUserJourney } = require('../analytics');
+let trackEvent, getAnalyticsSummary, getActiveUsers, getFunnel, getUserJourney;
+try { ({ trackEvent, getAnalyticsSummary, getActiveUsers, getFunnel, getUserJourney } = require('../analytics')); } catch(e) { console.log('analytics module skipped:', e.message); }
 
 app.post('/api/analytics/track', (req, res) => {
-  try {
-    trackEvent(req.body);
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!trackEvent) return res.status(503).json({ error: 'Analytics not configured' });
+  try { trackEvent(req.body); res.json({ success: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/analytics/summary', (req, res) => {
-  try {
-    const summary = getAnalyticsSummary(req.query);
-    res.json(summary);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getAnalyticsSummary) return res.status(503).json({ error: 'Analytics not configured' });
+  try { res.json(getAnalyticsSummary(req.query)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/analytics/active-users', (req, res) => {
-  try {
-    const users = getActiveUsers(req.query);
-    res.json({ users });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getActiveUsers) return res.status(503).json({ error: 'Analytics not configured' });
+  try { res.json({ users: getActiveUsers(req.query) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/analytics/funnel', (req, res) => {
-  try {
-    const funnel = getFunnel(req.query);
-    res.json(funnel);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getFunnel) return res.status(503).json({ error: 'Analytics not configured' });
+  try { res.json(getFunnel(req.query)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/analytics/user-journey/:userId', (req, res) => {
-  try {
-    const journey = getUserJourney(req.params.userId);
-    res.json(journey);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getUserJourney) return res.status(503).json({ error: 'Analytics not configured' });
+  try { res.json(getUserJourney(req.params.userId)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== MEMORY SYSTEM =====
-const { storeMemory, retrieveMemory, getConversationContext, storeConversation, learnFact, storePreference, storeInstruction, deleteMemory } = require('../memory');
+let storeMemory, retrieveMemory, getConversationContext, storeConversation, learnFact, deleteMemory;
+try { ({ storeMemory, retrieveMemory, getConversationContext, storeConversation, learnFact, deleteMemory } = require('../memory')); } catch(e) { console.log('memory module skipped:', e.message); }
 
 app.post('/api/memory/store', authRequired, (req, res) => {
-  try {
-    const result = storeMemory(req.user.id, req.body);
-    res.json({ success: true, memory: result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!storeMemory) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json({ success: true, memory: storeMemory(req.user.id, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/memory/retrieve', authRequired, (req, res) => {
-  try {
-    const memories = retrieveMemory(req.user.id, req.query);
-    res.json({ memories });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!retrieveMemory) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json({ memories: retrieveMemory(req.user.id, req.query) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/memory/context/:userId', (req, res) => {
-  try {
-    const context = getConversationContext(req.params.userId);
-    res.json(context);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getConversationContext) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json(getConversationContext(req.params.userId)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/memory/conversation', authRequired, (req, res) => {
-  try {
-    const result = storeConversation(req.user.id, req.body);
-    res.json({ success: true, result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!storeConversation) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json({ success: true, result: storeConversation(req.user.id, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/memory/fact', authRequired, (req, res) => {
-  try {
-    const result = learnFact(req.user.id, req.body);
-    res.json({ success: true, fact: result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!learnFact) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json({ success: true, fact: learnFact(req.user.id, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/memory/:id', authRequired, (req, res) => {
-  try {
-    const result = deleteMemory(req.user.id, req.params.id);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!deleteMemory) return res.status(503).json({ error: 'Memory not configured' });
+  try { res.json(deleteMemory(req.user.id, req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== SEARCH =====
-const { search } = require('../search');
+let searchFn;
+try { ({ search: searchFn } = require('../search')); } catch(e) { console.log('search module skipped:', e.message); }
 
 app.get('/api/search', (req, res) => {
-  try {
-    const results = search(req.query.q || '', req.query);
-    res.json({ query: req.query.q, results });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!searchFn) return res.status(503).json({ error: 'Search not configured' });
+  try { res.json({ query: req.query.q, results: searchFn(req.query.q || '', req.query) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== STORAGE =====
-const { Storage } = require('../storage');
+let Storage;
+try { ({ Storage } = require('../storage')); Storage = new Storage(); } catch(e) { console.log('storage module skipped:', e.message); }
 
 app.post('/api/storage/upload', authRequired, async (req, res) => {
-  try {
-    const result = await Storage.upload(req.body);
-    res.json({ success: true, url: result.url, key: result.key });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!Storage) return res.status(503).json({ error: 'Storage not configured' });
+  try { const r = await Storage.upload(req.body); res.json({ success: true, url: r.url, key: r.key }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/storage/:key', (req, res) => {
-  try {
-    const file = Storage.get(req.params.key);
-    res.json(file);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!Storage) return res.status(503).json({ error: 'Storage not configured' });
+  try { res.json(Storage.get(req.params.key)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/storage/:key', authRequired, (req, res) => {
-  try {
-    const result = Storage.delete(req.params.key);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!Storage) return res.status(503).json({ error: 'Storage not configured' });
+  try { res.json(Storage.delete(req.params.key)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== RBAC =====
-const { canAccess, getAllowedActions, listRoles, getRoleInfo } = require('../rbac');
+let listRoles, getRoleInfo, getAllowedActions;
+try { ({ listRoles, getRoleInfo, getAllowedActions } = require('../rbac')); } catch(e) { console.log('rbac module skipped:', e.message); }
 
 app.get('/api/rbac/roles', (req, res) => {
-  res.json({ roles: listRoles() });
+  if (!listRoles) return res.status(503).json({ error: 'RBAC not configured' });
+  try { res.json({ roles: listRoles() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/rbac/roles/:role', (req, res) => {
-  try {
-    const info = getRoleInfo(req.params.role);
-    res.json(info);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getRoleInfo) return res.status(503).json({ error: 'RBAC not configured' });
+  try { res.json(getRoleInfo(req.params.role)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/rbac/permissions/:role/:entity', authRequired, (req, res) => {
-  try {
-    const actions = getAllowedActions(req.params.role, req.params.entity);
-    res.json({ role: req.params.role, entity: req.params.entity, actions });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getAllowedActions) return res.status(503).json({ error: 'RBAC not configured' });
+  try { res.json({ role: req.params.role, entity: req.params.entity, actions: getAllowedActions(req.params.role, req.params.entity) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== API KEYS =====
-const { generateKey, validateKey, revokeKey, listKeys } = require('../api-keys');
+let generateKey, validateKey, revokeKey, listKeys;
+try { ({ generateKey, validateKey, revokeKey, listKeys } = require('../api-keys')); } catch(e) { console.log('api-keys module skipped:', e.message); }
 
 app.post('/api/keys/generate', authRequired, (req, res) => {
-  try {
-    const key = generateKey(req.user.id, req.body.scopes || []);
-    res.json({ success: true, key });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!generateKey) return res.status(503).json({ error: 'API keys not configured' });
+  try { res.json({ success: true, key: generateKey(req.user.id, req.body.scopes || []) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/keys', authRequired, (req, res) => {
-  try {
-    const keys = listKeys(req.user.id);
-    res.json({ keys });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!listKeys) return res.status(503).json({ error: 'API keys not configured' });
+  try { res.json({ keys: listKeys(req.user.id) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/keys/:id', authRequired, (req, res) => {
-  try {
-    const result = revokeKey(req.params.id);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!revokeKey) return res.status(503).json({ error: 'API keys not configured' });
+  try { res.json(revokeKey(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== SCHEDULER =====
-const { start: startTask, stop: stopTask, list: listTasks, stopAll, SCHEDULED_TASKS } = require('../scheduler');
+let startTask, stopTask, listTasks, stopAllTasks;
+try { ({ start: startTask, stop: stopTask, list: listTasks, stopAll: stopAllTasks } = require('../scheduler')); } catch(e) { console.log('scheduler module skipped:', e.message); }
 
 app.post('/api/scheduler/tasks', authRequired, (req, res) => {
-  try {
-    const task = startTask(req.body);
-    res.json({ success: true, task });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!startTask) return res.status(503).json({ error: 'Scheduler not configured' });
+  try { res.json({ success: true, task: startTask(req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/scheduler/tasks', (req, res) => {
-  res.json({ tasks: listTasks() });
+  if (!listTasks) return res.status(503).json({ error: 'Scheduler not configured' });
+  try { res.json({ tasks: listTasks() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/scheduler/tasks/:id', authRequired, (req, res) => {
-  try {
-    const result = stopTask(req.params.id);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/scheduler/tasks', authRequired, (req, res) => {
-  try {
-    const result = stopAll();
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!stopTask) return res.status(503).json({ error: 'Scheduler not configured' });
+  try { res.json(stopTask(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== ORCHESTRATOR =====
-const { createTask, delegateTask, executeTask, createPipeline, broadcastToAgents, getAgentStatus, getAllAgentsStatus } = require('../orchestrator');
+let createTask, delegateTask, executeTask, createPipeline, broadcastToAgents, getAllAgentsStatus, getAgentStatus;
+try { ({ createTask, delegateTask, executeTask, createPipeline, broadcastToAgents, getAllAgentsStatus, getAgentStatus } = require('../orchestrator')); } catch(e) { console.log('orchestrator module skipped:', e.message); }
 
 app.post('/api/orchestrator/tasks', authRequired, (req, res) => {
-  try {
-    const task = createTask(req.body);
-    res.json({ success: true, task });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!createTask) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json({ success: true, task: createTask(req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/orchestrator/delegate', authRequired, (req, res) => {
-  try {
-    const result = delegateTask(req.body);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!delegateTask) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json(delegateTask(req.body)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/orchestrator/execute/:taskId', authRequired, async (req, res) => {
-  try {
-    const result = await executeTask(req.params.taskId);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!executeTask) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json(await executeTask(req.params.taskId)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/orchestrator/pipeline', authRequired, (req, res) => {
-  try {
-    const pipeline = createPipeline(req.body);
-    res.json({ success: true, pipeline });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!createPipeline) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json({ success: true, pipeline: createPipeline(req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/orchestrator/broadcast', authRequired, (req, res) => {
-  try {
-    const result = broadcastToAgents(req.body);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!broadcastToAgents) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json(broadcastToAgents(req.body)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/orchestrator/agents', (req, res) => {
-  try {
-    const statuses = getAllAgentsStatus();
-    res.json(statuses);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getAllAgentsStatus) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json(getAllAgentsStatus()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/orchestrator/agents/:name', (req, res) => {
-  try {
-    const status = getAgentStatus(req.params.name);
-    res.json(status);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getAgentStatus) return res.status(503).json({ error: 'Orchestrator not configured' });
+  try { res.json(getAgentStatus(req.params.name)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== SSO =====
-const { createSession, verifyToken: verifySSO, refreshSession, createPlatformToken, getLoginUrl, listPlatforms: listSSOPlatforms, verifyPlatformToken } = require('../sso');
+let createSSOSession, verifySSOToken, refreshSSOSession, getSSOLoginUrl, listSSOPlatforms;
+try { ({ createSession: createSSOSession, verifyToken: verifySSOToken, refreshSession: refreshSSOSession, getLoginUrl: getSSOLoginUrl, listPlatforms: listSSOPlatforms } = require('../sso')); } catch(e) { console.log('sso module skipped:', e.message); }
 
 app.get('/api/sso/platforms', (req, res) => {
-  res.json({ platforms: listSSOPlatforms() });
+  if (!listSSOPlatforms) return res.status(503).json({ error: 'SSO not configured' });
+  try { res.json({ platforms: listSSOPlatforms() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/sso/login', async (req, res) => {
-  try {
-    const { platform, userId } = req.body;
-    const session = createSession(platform, userId);
-    res.json(session);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+app.post('/api/sso/login', (req, res) => {
+  if (!createSSOSession) return res.status(503).json({ error: 'SSO not configured' });
+  try { res.json(createSSOSession(req.body.platform, req.body.userId)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/sso/verify', (req, res) => {
-  try {
-    const result = verifySSO(req.body.token);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!verifySSOToken) return res.status(503).json({ error: 'SSO not configured' });
+  try { res.json(verifySSOToken(req.body.token)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/sso/refresh', (req, res) => {
-  try {
-    const result = refreshSession(req.body.token);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!refreshSSOSession) return res.status(503).json({ error: 'SSO not configured' });
+  try { res.json(refreshSSOSession(req.body.token)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/sso/login-url/:platform', (req, res) => {
-  try {
-    const url = getLoginUrl(req.params.platform, req.query);
-    res.json({ url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getSSOLoginUrl) return res.status(503).json({ error: 'SSO not configured' });
+  try { res.json({ url: getSSOLoginUrl(req.params.platform, req.query) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== BACKUP =====
-const { runBackup, ENTITIES } = require('../backup');
+let runBackup, BACKUP_ENTITIES;
+try { ({ runBackup, ENTITIES: BACKUP_ENTITIES } = require('../backup')); } catch(e) { console.log('backup module skipped:', e.message); }
 
 app.post('/api/backup/run', authRequired, async (req, res) => {
-  try {
-    const result = await runBackup();
-    res.json({ success: true, result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!runBackup) return res.status(503).json({ error: 'Backup not configured' });
+  try { res.json({ success: true, result: await runBackup() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/backup/entities', (req, res) => {
-  res.json({ entities: ENTITIES });
+  res.json({ entities: BACKUP_ENTITIES || [] });
 });
 
 // ===== DATA EXPORT =====
-const { exportEntity, exportAll, importEntity } = require('../data-export');
+let exportEntity, exportAll, importEntity;
+try { ({ exportEntity, exportAll, importEntity } = require('../data-export')); } catch(e) { console.log('data-export module skipped:', e.message); }
 
 app.get('/api/export/:entity', authRequired, (req, res) => {
-  try {
-    const data = exportEntity(req.params.entity);
-    res.json(data);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!exportEntity) return res.status(503).json({ error: 'Export not configured' });
+  try { res.json(exportEntity(req.params.entity)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/export', authRequired, (req, res) => {
-  try {
-    const data = exportAll();
-    res.json(data);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!exportAll) return res.status(503).json({ error: 'Export not configured' });
+  try { res.json(exportAll()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/import/:entity', authRequired, (req, res) => {
-  try {
-    const result = importEntity(req.params.entity, req.body);
-    res.json({ success: true, result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!importEntity) return res.status(503).json({ error: 'Import not configured' });
+  try { res.json({ success: true, result: importEntity(req.params.entity, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ===== SESSION RECORDER =====
-const { startSession, recordSessionEvent, endSession, getSessionReplay, listSessions, getSessionStats } = require('../session-recorder');
+let startSession, recordSessionEvent, endSession, getSessionReplay, listSessions, getSessionStats;
+try { ({ startSession, recordSessionEvent, endSession, getSessionReplay, listSessions, getSessionStats } = require('../session-recorder')); } catch(e) { console.log('session-recorder module skipped:', e.message); }
 
 app.post('/api/sessions/start', authRequired, (req, res) => {
-  try {
-    const session = startSession(req.user.id, req.body);
-    res.json({ success: true, session });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!startSession) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json({ success: true, session: startSession(req.user.id, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/sessions/:id/event', authRequired, (req, res) => {
-  try {
-    const result = recordSessionEvent(req.params.id, req.body);
-    res.json({ success: true, result });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!recordSessionEvent) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json({ success: true, result: recordSessionEvent(req.params.id, req.body) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/sessions/:id/end', authRequired, (req, res) => {
-  try {
-    const result = endSession(req.params.id);
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!endSession) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json(endSession(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/sessions/:id/replay', authRequired, (req, res) => {
-  try {
-    const replay = getSessionReplay(req.params.id);
-    res.json(replay);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getSessionReplay) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json(getSessionReplay(req.params.id)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/sessions', authRequired, (req, res) => {
-  try {
-    const sessions = listSessions(req.query);
-    res.json({ sessions });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!listSessions) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json({ sessions: listSessions(req.query) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/sessions/stats', (req, res) => {
-  try {
-    const stats = getSessionStats(req.query);
-    res.json(stats);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  if (!getSessionStats) return res.status(503).json({ error: 'Sessions not configured' });
+  try { res.json(getSessionStats(req.query)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ===== RATE LIMITER (as middleware demonstration) =====
-const { checkLimit, limits } = require('../rate-limiter');
+// ===== RATE LIMITER INFO =====
+let rateLimits;
+try { ({ limits: rateLimits } = require('../rate-limiter')); } catch(e) { console.log('rate-limiter module skipped:', e.message); }
+
 app.get('/api/rate-limits', (req, res) => {
-  res.json({ limits });
+  res.json({ limits: rateLimits || {} });
 });
 
 // ===== 404 =====
