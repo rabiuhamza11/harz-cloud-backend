@@ -3006,6 +3006,89 @@ app.get('/api/whatsapp/providers', (req, res) => {
   res.json({ providers: WHATSAPP_CONFIG.providers });
 });
 
+
+// ===== DEPLOYFORGE DASHBOARD ENDPOINT =====
+app.get('/api/deployforge', (req, res) => {
+  const { AGENT_DOMAINS } = require('./channels/router');
+  
+  // Get all endpoint paths
+  const endpoints = [];
+  app._router.stack.forEach(layer => {
+    if (layer.route) {
+      const methods = Object.keys(layer.route.methods).map(m => m.toUpperCase());
+      endpoints.push({
+        method: methods.join(','),
+        path: layer.route.path
+      });
+    }
+  });
+  
+  // Channel status
+  const channels = ['whatsapp', 'telegram', 'slack', 'twilio', 'maytapi', 'imessage'];
+  const channelStatus = channels.map(c => ({
+    name: c,
+    webhook: `/webhooks/${c}`,
+    configured: !!(
+      (c === 'whatsapp' && process.env.WHATSAPP_TOKEN) ||
+      (c === 'telegram' && process.env.TELEGRAM_BOT_TOKEN) ||
+      (c === 'slack' && process.env.SLACK_BOT_TOKEN) ||
+      (c === 'twilio' && process.env.TWILIO_ACCOUNT_SID) ||
+      (c === 'maytapi' && process.env.MAYTAPI_TOKEN) ||
+      (c === 'imessage' && process.env.IMESSAGE_RELAY_URL)
+    )
+  }));
+  
+  res.json({
+    project: {
+      name: 'Lives Stillness',
+      version: '3.6.0',
+      status: 'operational',
+      platform: 'Vercel',
+      url: 'https://harz-cloud-backend.vercel.app'
+    },
+    stats: {
+      platforms: { total: DATA.platforms.length, live: DATA.platforms.filter(p => p.status === 'Live').length },
+      repositories: DATA.repositories.length,
+      agents: DATA.agents.length,
+      commits: DATA.commits ? DATA.commits.length : 0
+    },
+    agents: Object.values(AGENT_DOMAINS).map(a => ({
+      name: a.name,
+      role: a.role,
+      intents: a.keywords.slice(0, 5),
+      disclaimer: !!a.disclaimer
+    })),
+    channels: channelStatus,
+    endpoints: {
+      total: endpoints.length,
+      list: endpoints
+    },
+    services: [
+      { name: 'Paystack Payments', status: 'ready', endpoints: ['/api/payments/initialize', '/api/payments/verify/:reference', '/api/payments/list', '/api/payments/refund'] },
+      { name: 'Email Service', status: 'ready', endpoints: ['/api/email/send', '/api/email/templates'] },
+      { name: 'SMS Service', status: 'ready', endpoints: ['/api/sms/send', '/api/sms/templates'] },
+      { name: 'Two-Factor Auth', status: 'ready', endpoints: ['/api/2fa/setup', '/api/2fa/verify', '/api/2fa/backup-codes'] },
+      { name: 'Password Reset', status: 'ready', endpoints: ['/api/auth/password-reset/request', '/api/auth/password-reset/verify'] },
+      { name: 'Analytics', status: 'ready', endpoints: ['/api/analytics/track', '/api/analytics/summary', '/api/analytics/active-users', '/api/analytics/funnel', '/api/analytics/user-journey/:userId'] },
+      { name: 'Memory System', status: 'ready', endpoints: ['/api/memory/store', '/api/memory/retrieve', '/api/memory/context/:userId', '/api/memory/conversation', '/api/memory/fact'] },
+      { name: 'Search', status: 'ready', endpoints: ['/api/search'] },
+      { name: 'RBAC', status: 'ready', endpoints: ['/api/rbac/roles', '/api/rbac/roles/:role', '/api/rbac/permissions/:role/:entity'] },
+      { name: 'API Keys', status: 'ready', endpoints: ['/api/keys/generate', '/api/keys', '/api/keys/:id'] },
+      { name: 'Scheduler', status: 'ready', endpoints: ['/api/scheduler/tasks'] },
+      { name: 'Orchestrator', status: 'ready', endpoints: ['/api/orchestrator/tasks', '/api/orchestrator/delegate', '/api/orchestrator/pipeline', '/api/orchestrator/agents'] },
+      { name: 'SSO', status: 'ready', endpoints: ['/api/sso/platforms', '/api/sso/login', '/api/sso/verify'] },
+      { name: 'Backup', status: 'ready', endpoints: ['/api/backup/run', '/api/backup/entities'] },
+      { name: 'Data Export', status: 'ready', endpoints: ['/api/export', '/api/export/:entity', '/api/import/:entity'] },
+      { name: 'Session Recorder', status: 'ready', endpoints: ['/api/sessions/start', '/api/sessions/:id/replay', '/api/sessions/stats'] },
+      { name: 'Rate Limiter', status: 'ready', endpoints: ['/api/rate-limits'] },
+      { name: 'Telegram Bot', status: 'ready', endpoints: ['/webhooks/telegram', '/api/telegram/setup', '/api/telegram/send'] },
+      { name: 'Twilio WhatsApp', status: 'ready', endpoints: ['/webhooks/twilio', '/api/twilio/send', '/api/twilio/status'] },
+      { name: 'Maytapi WhatsApp', status: 'ready', endpoints: ['/webhooks/maytapi', '/api/maytapi/send', '/api/maytapi/status'] },
+      { name: 'WhatsApp Config', status: 'ready', endpoints: ['/api/whatsapp/config', '/api/whatsapp/providers'] }
+    ]
+  });
+});
+
 // ===== 404 =====
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
