@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const { Database } = require('./database');
 const { Storage } = require('./storage');
+const setupV20Modules = require('./harz-v20-modules');
 const { Paystack } = require('./paystack');
 const { canAccess, isRLSEnforced, isPublicEntity, isAdminEntity, getRoleInfo, listRoles, getAllowedActions } = require('./rbac');
 const { enforceRLS, canAccessRecord, addOwnership, getRLSQueryFilter } = require('./rls');
@@ -171,7 +172,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'operational',
     service: 'HARZ Cloud Backend',
-    version: '5.0.0',
+    version: '20.0.0',
     features: ['RBAC', 'RLS', 'JWT', 'SSO', 'Push', 'Webhooks (16)', 'Agents', 'Memory', 'Analytics', 'Sessions', 'Storage', 'CDN', 'Rate Limiting', 'Email', 'SMS', 'Search', 'Scheduler', 'API Keys', '2FA', 'Password Reset', 'WebSocket', 'Data Export', 'Audit', 'Backup', 'Approval', 'Base44 Bridge (110+ entities)'],
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
@@ -674,7 +675,7 @@ app.get('/backup/export', authenticate, async (req, res) => {
       exported_at: new Date().toISOString(),
       exported_by: req.user.email,
       entity_count: entities.length,
-      version: '5.0.0'
+      version: '20.0.0'
     };
     
     await auditLog(req.user, 'export', 'backup', null, { entities: entities.length });
@@ -3133,7 +3134,7 @@ app.get('/deployforge/health', (req, res) => {
     providers: Object.keys(DF_PROVIDERS).length,
     providers_list: Object.keys(DF_PROVIDERS),
     uptime: process.uptime(),
-    connected_to: 'HARZ Cloud v5.1',
+    connected_to: 'HARZ Cloud v20.0',
     timestamp: new Date().toISOString()
   });
 });
@@ -3488,9 +3489,14 @@ app.use((req, res) => {
   });
 });
 
+// ============================================
+// HARZ Cloud v20.0 — Expansion Modules
+// ============================================
+setupV20Modules(app, authenticate, Database);
+
 app.listen(PORT, () => {
-  console.log('HARZ Cloud v5.1 running on port ' + PORT);
-  console.log('HARZ Cloud v5.1 — Complete Platform: RBAC + RLS + SSO + Push + Webhooks + Agents + Memory + Analytics + Sessions + Storage + CDN + Rate Limit + Email + SMS + Search + Scheduler + API Keys + 2FA + WebSocket + Export + Audit + Backup + Bridge');
+  console.log('HARZ Cloud v20.0 running on port ' + PORT);
+  console.log('HARZ Cloud v20.0 — v20.0 MEGA: Templates + Billing + Teams + Notifications + CLI + i18n + Agent Marketplace + Domains + Env Vars + Logs + Security + Advanced Analytics + Marketplace + Events + Diagnostics + Feature Flags + Rate Limits + RBAC + RLS + SSO + Push + Webhooks + Agents + Memory + Analytics + Sessions + Storage + CDN + Email + SMS + Search + Scheduler + API Keys + 2FA + WebSocket');
   console.log('Roles: owner, admin, manager, user, agent, guest');
 });
 
