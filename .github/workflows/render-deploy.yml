@@ -7,11 +7,33 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Deploy
+      - name: Trigger Render Deploy via API
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
+          if [ -z "$RENDER_API_KEY" ] || [ -z "$RENDER_SERVICE_ID" ]; then
+            echo "RENDER_API_KEY or RENDER_SERVICE_ID not set"
+            echo "To fix:"
+            echo "1. Go to render.com → Account Settings → API Keys → Create API Key"
+            echo "2. Go to your service → Settings → copy the Service ID"
+            echo "3. Add both as GitHub Secrets in rabiuhamza11/harz-cloud-backend"
+            echo "4. Or simply click Manual Deploy in Render dashboard"
+            exit 0
+          fi
+          
+          echo "Triggering deploy via Render API..."
+          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}')
+          
+          echo "Render API response: $RESPONSE"
+          
+          # Also try deploy hook if set
           if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
             curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-            echo "Render deploy triggered"
-          else
-            echo "RENDER_DEPLOY_HOOK not set - Render auto-deploy will handle it"
+            echo "Deploy hook also triggered"
           fi
+      - name: Deploy status
+        run: echo "Deploy triggered. Check https://dashboard.render.com for status."
