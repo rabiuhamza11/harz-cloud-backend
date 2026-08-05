@@ -14,7 +14,7 @@ const conversationStore = require('./channels/conversations');
 const channelConfig = require('./channels/config');
 
 const jwt = require('jsonwebtoken');
-const setupV20Modules = require('../harz-v20-modules');
+const setupV20Modules = require('./harz-v20-modules');
 try { require('dotenv').config(); } catch(e) { /* dotenv optional */ }
 
 const app = express();
