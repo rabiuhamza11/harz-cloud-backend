@@ -1,4 +1,4 @@
-// HARZ Cloud Backend v3.0 — Full Ecosystem API
+// HARZ Cloud Backend v20.0 — Full Ecosystem API
 // All data stored locally — NO Base44 dependency
 // Owner: Ahmad Adamu (Rabiu Hamza) — Harz Technology Group
 
@@ -14,11 +14,12 @@ const conversationStore = require('./channels/conversations');
 const channelConfig = require('./channels/config');
 
 const jwt = require('jsonwebtoken');
+const setupV20Modules = require('../harz-v20-modules');
 try { require('dotenv').config(); } catch(e) { /* dotenv optional */ }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'harz-cloud-v3-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'harz-cloud-v20-2026';
 
 // ===== MIDDLEWARE =====
 app.use(cors({ origin: '*' }));
@@ -315,7 +316,7 @@ const DATA = {
       "category": "Infrastructure",
       "url": "https://harz-cloud-backend.onrender.com",
       "status": "Live",
-      "description": "HARZ Cloud Backend v3.0 \u2014 Full ecosystem API",
+      "description": "HARZ Cloud Backend v20.0 \u2014 Full ecosystem API",
       "revenue": 0
     },
     {
@@ -3336,6 +3337,11 @@ app.get('/api/deployforge', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.url });
 });
+
+// ============================================
+// HARZ Cloud v20.0 — Expansion Modules
+// ============================================
+setupV20Modules(app, authRequired, null);
 
 module.exports = app;
 // v3.6.3 fix

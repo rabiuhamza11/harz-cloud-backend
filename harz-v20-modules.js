@@ -513,7 +513,7 @@ app.get('/logs', authenticate, async (req, res) => {
   res.json({ logs, total: logs.length });
 });
 app.get('/logs/:id', authenticate, async (req, res) => {
-  res.json({ log: { id: req.params.id, timestamp: new Date().toISOString(), level: 'info', message: 'Detailed log entry', stack_trace: null, metadata: { ip: '127.0.0.1', method: 'GET', path: '/api/health' } }});
+  res.json({ log: { id: req.params.id, timestamp: new Date().toISOString(), level: 'info', message: 'Detailed log entry', stack_trace: null, metadata: { ip: '127.0.0.1', method: 'GET', path: '/api/health' } });
 });
 app.get('/logs/stats/summary', authenticate, async (req, res) => {
   res.json({ summary: { total: 15423, by_level: { info: 12000, warn: 2000, error: 423, debug: 1000 }, avg_response_time: '145ms', error_rate: '2.7%', uptime: '99.9%' } });
@@ -668,7 +668,7 @@ app.get('/diagnostics/dependencies', (req, res) => {
 });
 app.post('/diagnostics/test', authenticate, async (req, res) => {
   const { test_type } = req.body;
-  res.json({ success: true, test_type, results: { latency: '145ms', status: 'passed', checks: { dns: 'pass', ssl: 'pass', cors: 'pass', auth: 'pass' } }});
+  res.json({ success: true, test_type, results: { latency: '145ms', status: 'passed', checks: { dns: 'pass', ssl: 'pass', cors: 'pass', auth: 'pass' } });
 });
 app.get('/diagnostics/version', (req, res) => {
   res.json({ version: '20.0.0', build: 'harz-cloud-v20-' + Date.now(), modules: 15, total_endpoints: 292, node_version: process.version });
