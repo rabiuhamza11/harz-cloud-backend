@@ -5,8 +5,5 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "/api/index.js" }
-  ],
-  "env": {
-    "JWT_SECRET": "harz-cloud-v20-2026"
-  }
+  ]
 }
