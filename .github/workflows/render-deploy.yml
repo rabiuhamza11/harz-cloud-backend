@@ -1,0 +1,17 @@
+name: Deploy to Render
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+            curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+            echo "Render deploy triggered"
+          else
+            echo "RENDER_DEPLOY_HOOK not set - Render auto-deploy will handle it"
+          fi
