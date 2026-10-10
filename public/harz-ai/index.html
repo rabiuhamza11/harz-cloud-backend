@@ -57,7 +57,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 </div>
 <script>
 const API='https://harz-cloud-backend.onrender.com/bridge/agent-chat';
-const KEY='harz_cloud_live_321424';
+const KEY=localStorage.getItem('harz_api_key')||(function(){const k=prompt('API key required — obtain it privately from the owner.');if(k)localStorage.setItem('harz_api_key',k);return k||'';})(); // SECURITY 2026-10-10: published key removed from public code
 let busy=false;
 
 async function send(){
